@@ -13,8 +13,23 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
-func NewSocket(hub Hub) Socket {
+func NewServer(hub Hub) Server {
+	return &server{
+		hub: hub,
+	}
+}
+
+type server struct {
+	hub Hub
+}
+
+type Server interface {
+	Serve(w http.ResponseWriter, r *http.Request)
+}
+
+func NewSocket(hub Hub, conn *websocket.Conn) Socket {
 	return &socket{
+		conn:         conn,
 		hub:          hub,
 		dataChannel:  make(chan []byte),
 		done:         make(chan struct{}),
@@ -24,7 +39,7 @@ func NewSocket(hub Hub) Socket {
 }
 
 type Socket interface {
-	Serve(w http.ResponseWriter, r *http.Request)
+	Serve()
 	io.WriteCloser
 	Error(err error)
 }
@@ -38,7 +53,7 @@ type socket struct {
 	closeChannel chan struct{}
 }
 
-func (s *socket) Serve(w http.ResponseWriter, r *http.Request) {
+func (s *server) Serve(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
@@ -46,10 +61,12 @@ func (s *socket) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	s.conn = conn
+	socket := NewSocket(s.hub, conn)
+	socket.Serve()
+}
 
+func (s *socket) Serve() {
 	go s.read()
-
 	s.write()
 }
 

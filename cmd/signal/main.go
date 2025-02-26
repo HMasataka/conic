@@ -16,9 +16,9 @@ func main() {
 	hub := conic.NewHub()
 	go hub.Run()
 
-	socket := conic.NewSocket(hub)
+	server := conic.NewServer(hub)
 
-	r.Get("/ws", socket.Serve)
+	r.Get("/ws", server.Serve)
 
 	if err := http.ListenAndServe(":3000", r); err != nil {
 		log.Println(err)
