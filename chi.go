@@ -7,28 +7,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{} // use default options
+var upgrader = websocket.Upgrader{}
 
-func Handle(w http.ResponseWriter, r *http.Request) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
-	}
-	defer c.Close()
-
-	for {
-		mt, message, err := c.ReadMessage()
+func Handle(fn func(conn *websocket.Conn)) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println("read:", err)
-			break
+			log.Print("upgrade:", err)
+			return
 		}
+		defer conn.Close()
 
-		log.Printf("recv: %s", message)
-
-		if err = c.WriteMessage(mt, message); err != nil {
-			log.Println("write:", err)
-			break
-		}
+		fn(conn)
 	}
 }
