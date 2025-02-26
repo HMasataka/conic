@@ -1,6 +1,7 @@
 package conic
 
 import (
+	"encoding/json"
 	"log"
 	"net/url"
 	"os"
@@ -41,7 +42,7 @@ func (c *Client) Read() error {
 	}
 }
 
-func (c *Client) Write(message string) error {
+func (c *Client) Write() error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -52,9 +53,17 @@ func (c *Client) Write(message string) error {
 		select {
 		case <-c.done:
 			return nil
-		case t := <-ticker.C:
-			err := c.conn.WriteMessage(websocket.TextMessage, []byte(t.String()))
+		case <-ticker.C:
+			req := Request{
+				Type: RequestTypeRegister,
+			}
+
+			message, err := json.Marshal(req)
 			if err != nil {
+				return err
+			}
+
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return err
 			}
 		case <-interrupt:

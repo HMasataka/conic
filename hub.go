@@ -2,9 +2,11 @@ package conic
 
 import (
 	"errors"
+	"log"
 )
 
 type Hub interface {
+	Run()
 	SendMessage(req MessageRequest)
 	Register(req RegisterRequest)
 	Unregister(req UnRegisterRequest)
@@ -31,10 +33,12 @@ func (h *hub) Run() {
 		select {
 		case req := <-h.register:
 			h.clients[req.ID] = req.Client
+			log.Println("register", req.ID)
 		case req := <-h.unregister:
 			if client, ok := h.clients[req.ID]; ok {
 				delete(h.clients, req.ID)
 				client.Close()
+				log.Println("unregister", req.ID)
 			}
 		case req := <-h.dataChannel:
 			if client, ok := h.clients[req.TargetID]; ok {

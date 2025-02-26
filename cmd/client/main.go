@@ -21,7 +21,7 @@ func main() {
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-	defer client.Teardown()
+	defer client.Close()
 
 	go client.Read()
 

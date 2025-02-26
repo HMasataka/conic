@@ -14,6 +14,8 @@ func main() {
 	r.Use(middleware.Logger)
 
 	hub := conic.NewHub()
+	go hub.Run()
+
 	socket := conic.NewSocket(hub)
 
 	r.Get("/ws", socket.Serve)
