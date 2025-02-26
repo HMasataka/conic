@@ -27,21 +27,21 @@ type Client struct {
 	done chan struct{}
 }
 
-func (c *Client) Read() {
+func (c *Client) Read() error {
 	defer close(c.done)
 
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
-			return
+			return err
 		}
 
 		log.Printf("recv: %s", message)
 	}
 }
 
-func (c *Client) Write() {
+func (c *Client) Write(message string) error {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
@@ -51,27 +51,22 @@ func (c *Client) Write() {
 	for {
 		select {
 		case <-c.done:
-			return
+			return nil
 		case t := <-ticker.C:
 			err := c.conn.WriteMessage(websocket.TextMessage, []byte(t.String()))
 			if err != nil {
-				log.Println("write:", err)
-				return
+				return err
 			}
 		case <-interrupt:
 			log.Println("interrupt")
 
-			// Cleanly close the connection by sending a close message and then
-			// waiting (with timeout) for the server to close the connection.
-			err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Println("write close:", err)
-				return
+			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+				return err
 			}
 
 			c.waitCloseConnection()
 
-			return
+			return nil
 		}
 	}
 }
@@ -83,6 +78,10 @@ func (c *Client) waitCloseConnection() {
 	}
 }
 
-func (c *Client) Teardown() error {
+func (c *Client) Close() error {
 	return c.conn.Close()
+}
+
+func (c *Client) Error(err error) {
+	log.Println("err:", err)
 }
