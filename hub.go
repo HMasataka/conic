@@ -2,8 +2,14 @@ package conic
 
 import (
 	"errors"
+	"io"
 	"log"
 )
+
+type HubClient interface {
+	io.WriteCloser
+	Error(err error)
+}
 
 type Hub interface {
 	Run()
@@ -13,7 +19,7 @@ type Hub interface {
 }
 
 type hub struct {
-	clients     map[string]Socket
+	clients     map[string]HubClient
 	dataChannel chan MessageRequest
 	register    chan RegisterRequest
 	unregister  chan UnRegisterRequest
@@ -24,7 +30,7 @@ func NewHub() Hub {
 		dataChannel: make(chan MessageRequest),
 		register:    make(chan RegisterRequest),
 		unregister:  make(chan UnRegisterRequest),
-		clients:     make(map[string]Socket),
+		clients:     make(map[string]HubClient),
 	}
 }
 
@@ -69,7 +75,7 @@ func (h *hub) SendMessage(req MessageRequest) {
 
 type RegisterRequest struct {
 	ID     string
-	Client Socket
+	Client HubClient
 }
 
 func (h *hub) Register(req RegisterRequest) {
