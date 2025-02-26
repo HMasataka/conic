@@ -7,8 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{}
-
 func Handle(fn func(conn *websocket.Conn)) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
