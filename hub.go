@@ -2,12 +2,12 @@ package conic
 
 import (
 	"errors"
-	"io"
 )
 
 type Hub interface {
-	io.WriteCloser
-	Error(err error)
+	SendMessage(req MessageRequest)
+	Register(req RegisterRequest)
+	Unregister(req UnRegisterRequest)
 }
 
 type hub struct {
@@ -17,7 +17,7 @@ type hub struct {
 	unregister  chan UnRegisterRequest
 }
 
-func NewHub() *hub {
+func NewHub() Hub {
 	return &hub{
 		dataChannel: make(chan MessageRequest),
 		register:    make(chan RegisterRequest),
