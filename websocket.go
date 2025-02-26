@@ -68,6 +68,8 @@ func (s *socket) Close() error {
 }
 
 func (s *socket) read() {
+	defer close(s.done)
+
 	for {
 		messageType, message, err := s.conn.ReadMessage()
 		if err != nil {
@@ -82,7 +84,7 @@ func (s *socket) read() {
 				return
 			}
 		case websocket.CloseMessage:
-			close(s.done)
+			return
 		default:
 			log.Printf("message type: %v, message: %s\n", messageType, string(message))
 		}
@@ -102,6 +104,10 @@ type Request struct {
 }
 
 type WebsocketUnRegisterRequest struct {
+	ID string
+}
+
+type WebsocketRegisterResponse struct {
 	ID string
 }
 
@@ -132,6 +138,19 @@ func (s *socket) handleMessage(message []byte) error {
 			ID:     id,
 			Client: s,
 		})
+
+		res := WebsocketRegisterResponse{
+			ID: id,
+		}
+
+		message, err := json.Marshal(res)
+		if err != nil {
+			return err
+		}
+
+		if _, err := s.Write(message); err != nil {
+			return err
+		}
 	case RequestTypeUnRegister:
 		var unregister WebsocketUnRegisterRequest
 
