@@ -2,6 +2,7 @@ package conic
 
 import (
 	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -12,8 +13,8 @@ import (
 
 var upgrader = websocket.Upgrader{}
 
-func NewSocket(hub Hub) *Socket {
-	return &Socket{
+func NewSocket(hub Hub) Socket {
+	return &socket{
 		hub:          hub,
 		dataChannel:  make(chan []byte),
 		done:         make(chan struct{}),
@@ -22,7 +23,13 @@ func NewSocket(hub Hub) *Socket {
 	}
 }
 
-type Socket struct {
+type Socket interface {
+	Serve(w http.ResponseWriter, r *http.Request)
+	io.WriteCloser
+	Error(err error)
+}
+
+type socket struct {
 	conn         *websocket.Conn
 	hub          Hub
 	dataChannel  chan []byte
@@ -31,7 +38,7 @@ type Socket struct {
 	closeChannel chan struct{}
 }
 
-func (s *Socket) Serve(w http.ResponseWriter, r *http.Request) {
+func (s *socket) Serve(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Print("upgrade:", err)
@@ -46,20 +53,21 @@ func (s *Socket) Serve(w http.ResponseWriter, r *http.Request) {
 	s.write()
 }
 
-func (s *Socket) Write(message []byte) (int, error) {
+func (s *socket) Write(message []byte) (int, error) {
 	s.dataChannel <- message
 	return len(message), nil
 }
 
-func (s *Socket) Error(err error) {
+func (s *socket) Error(err error) {
 	s.errorChannel <- err
 }
 
-func (s *Socket) Close() {
+func (s *socket) Close() error {
 	close(s.closeChannel)
+	return nil
 }
 
-func (s *Socket) read() {
+func (s *socket) read() {
 	for {
 		messageType, message, err := s.conn.ReadMessage()
 		if err != nil {
@@ -109,7 +117,7 @@ type CandidateRequest struct {
 	Candidate string
 }
 
-func (s *Socket) handleMessage(message []byte) error {
+func (s *socket) handleMessage(message []byte) error {
 	var req Request
 
 	if err := json.Unmarshal(message, &req); err != nil {
@@ -163,7 +171,7 @@ func (s *Socket) handleMessage(message []byte) error {
 	return nil
 }
 
-func (s *Socket) write() {
+func (s *socket) write() {
 	for {
 		select {
 		case <-s.done:
