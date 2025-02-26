@@ -11,7 +11,7 @@ type Hub interface {
 }
 
 type hub struct {
-	clients     map[string]Client
+	clients     map[string]Socket
 	dataChannel chan MessageRequest
 	register    chan RegisterRequest
 	unregister  chan UnRegisterRequest
@@ -22,7 +22,7 @@ func NewHub() Hub {
 		dataChannel: make(chan MessageRequest),
 		register:    make(chan RegisterRequest),
 		unregister:  make(chan UnRegisterRequest),
-		clients:     make(map[string]Client),
+		clients:     make(map[string]Socket),
 	}
 }
 
@@ -34,14 +34,11 @@ func (h *hub) Run() {
 		case req := <-h.unregister:
 			if client, ok := h.clients[req.ID]; ok {
 				delete(h.clients, req.ID)
-
-				if err := client.Close(); err != nil {
-					client.Error(err)
-				}
+				client.Close()
 			}
 		case req := <-h.dataChannel:
 			if client, ok := h.clients[req.TargetID]; ok {
-				if err := client.Write(req.Message); err != nil {
+				if _, err := client.Write(req.Message); err != nil {
 					client.Error(err)
 				}
 			} else {
@@ -56,7 +53,7 @@ func (h *hub) Run() {
 type MessageRequest struct {
 	ID       string
 	TargetID string
-	Message  string
+	Message  []byte
 }
 
 func (h *hub) SendMessage(req MessageRequest) {
@@ -65,7 +62,7 @@ func (h *hub) SendMessage(req MessageRequest) {
 
 type RegisterRequest struct {
 	ID     string
-	Client Client
+	Client Socket
 }
 
 func (h *hub) Register(req RegisterRequest) {
@@ -74,7 +71,7 @@ func (h *hub) Register(req RegisterRequest) {
 
 type UnRegisterRequest struct {
 	ID     string
-	Client Client
+	Client Socket
 }
 
 func (h *hub) Unregister(req UnRegisterRequest) {

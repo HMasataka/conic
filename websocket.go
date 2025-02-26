@@ -19,6 +19,7 @@ type Socket struct {
 	dataChannel  chan []byte
 	errorChannel chan error
 	done         chan struct{}
+	closeChannel chan struct{}
 }
 
 func (s *Socket) Serve(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +42,10 @@ func (s *Socket) Write(message []byte) (int, error) {
 
 func (s *Socket) Error(err error) {
 	s.errorChannel <- err
+}
+
+func (s *Socket) Close() {
+	close(s.closeChannel)
 }
 
 func (s *Socket) read(conn *websocket.Conn) {
@@ -75,6 +80,12 @@ func (s *Socket) write(conn *websocket.Conn) {
 			if err := conn.WriteMessage(websocket.TextMessage, []byte(e.Error())); err != nil {
 				return
 			}
+		case <-s.closeChannel:
+			if err := conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+				return
+			}
+
+			return
 		}
 	}
 }
