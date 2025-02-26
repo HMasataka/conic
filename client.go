@@ -24,6 +24,7 @@ func NewClient(u url.URL) (*Client, error) {
 }
 
 type Client struct {
+	id   string
 	conn *websocket.Conn
 	done chan struct{}
 }
@@ -38,7 +39,15 @@ func (c *Client) Read() error {
 			return err
 		}
 
-		log.Printf("recv: %s", message)
+		var res WebsocketRegisterResponse
+
+		if err := json.Unmarshal(message, &res); err != nil {
+			return err
+		}
+
+		log.Printf("recv: %v", res)
+
+		c.id = res.ID
 	}
 }
 
@@ -54,6 +63,10 @@ func (c *Client) Write() error {
 		case <-c.done:
 			return nil
 		case <-ticker.C:
+			if c.id != "" {
+				continue
+			}
+
 			req := Request{
 				Type: RequestTypeRegister,
 			}
