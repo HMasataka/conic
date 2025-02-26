@@ -74,7 +74,6 @@ func (c *Client) Write() {
 			return
 		}
 	}
-
 }
 
 func (c *Client) waitCloseConnection() {

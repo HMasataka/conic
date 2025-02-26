@@ -26,8 +26,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 
 		log.Printf("recv: %s", message)
 
-		err = c.WriteMessage(mt, message)
-		if err != nil {
+		if err = c.WriteMessage(mt, message); err != nil {
 			log.Println("write:", err)
 			break
 		}
