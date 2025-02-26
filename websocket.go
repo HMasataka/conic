@@ -16,8 +16,9 @@ func NewSocket() *Socket {
 }
 
 type Socket struct {
-	dataChannel chan []byte
-	done        chan struct{}
+	dataChannel  chan []byte
+	errorChannel chan error
+	done         chan struct{}
 }
 
 func (s *Socket) Serve(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +37,10 @@ func (s *Socket) Serve(w http.ResponseWriter, r *http.Request) {
 func (s *Socket) Write(message []byte) (int, error) {
 	s.dataChannel <- message
 	return len(message), nil
+}
+
+func (s *Socket) Error(err error) {
+	s.errorChannel <- err
 }
 
 func (s *Socket) read(conn *websocket.Conn) {
@@ -64,6 +69,10 @@ func (s *Socket) write(conn *websocket.Conn) {
 			return
 		case t := <-s.dataChannel:
 			if err := conn.WriteMessage(websocket.TextMessage, t); err != nil {
+				return
+			}
+		case e := <-s.errorChannel:
+			if err := conn.WriteMessage(websocket.TextMessage, []byte(e.Error())); err != nil {
 				return
 			}
 		}
