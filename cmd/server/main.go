@@ -23,7 +23,13 @@ func main() {
 	}
 	defer client.Close()
 
-	go client.Read()
+	go func() {
+		if err := client.Read(); err != nil {
+			log.Println("read:", err)
+		}
+	}()
 
-	client.Write()
+	if err := client.Write(); err != nil {
+		log.Println("write:", err)
+	}
 }
