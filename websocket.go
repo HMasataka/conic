@@ -175,7 +175,7 @@ func (s *socket) handleMessage(message []byte) error {
 			return err
 		}
 
-		s.hub.Register(RegisterRequest{
+		s.hub.Unregister(UnRegisterRequest{
 			ID: unregister.ID,
 		})
 	case RequestTypeSDP:
