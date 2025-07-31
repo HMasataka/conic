@@ -34,8 +34,8 @@ go mod tidy
 WebRTCシグナリングサーバーを開始します：
 
 ```bash
-# Makeを使用
-make server
+# Taskを使用
+task server
 
 # またはGoで直接実行
 go run cmd/server/main.go
@@ -48,8 +48,8 @@ go run cmd/server/main.go
 シグナリングサーバーにクライアントを接続します：
 
 ```bash
-# Makeを使用
-make client
+# Taskを使用
+task client
 
 # またはGoで直接実行
 go run cmd/client/main.go
@@ -127,25 +127,40 @@ go run cmd/client/main.go -addr "localhost:8080"
 
 ```bash
 # サーバーを起動
-make server
+task server
 
 # クライアントを起動
-make client
+task client
 
-# 利用可能なすべてのコマンドを表示
-make help
+# シグナルアプリを起動
+task signal
+
+# 利用可能なすべてのタスクを表示
+task --list
 
 # プロジェクトをビルド
-go build ./...
+task build
 
 # テストを実行（利用可能な場合）
-go test ./...
+task test
 
 # コードをフォーマット
-go fmt ./...
+task fmt
 
 # コードの問題をチェック
-go vet ./...
+task vet
+
+# 依存関係を整理
+task tidy
+
+# ビルド成果物をクリーンアップ
+task clean
+
+# 開発ツールをインストール
+task install-tools
+
+# ホットリロード付きでサーバーを起動（airが必要）
+task dev-server
 ```
 
 ### プロジェクト構造
@@ -161,7 +176,7 @@ go vet ./...
 ├── websocket.go    # WebSocketサーバー処理
 ├── handshake.go    # WebRTCハンドシェイク管理
 ├── go.mod          # Goモジュール定義
-└── Makefile        # ビルドコマンド
+└── Taskfile.yml    # タスクランナー設定
 ```
 
 ## ライセンス

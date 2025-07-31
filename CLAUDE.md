@@ -8,19 +8,20 @@ Conic is a Go-based WebRTC signaling server that facilitates real-time peer-to-p
 
 ## Development Commands
 
-### Running the Applications
+### Task Runner Commands (using Taskfile)
 
-- **Run server**: `make server` or `go run cmd/server/main.go`
-- **Run client**: `make client` or `go run cmd/client/main.go`
-- **View available commands**: `make help`
-
-### Standard Go Commands
-
-- **Build all**: `go build ./...`
-- **Run tests**: `go test ./...`
-- **Install dependencies**: `go mod tidy`
-- **Format code**: `go fmt ./...`
-- **Vet code**: `go vet ./...`
+- **Run server**: `task server` or `go run cmd/server/main.go`
+- **Run client**: `task client` or `go run cmd/client/main.go`
+- **Run signal**: `task signal` or `go run cmd/signal/main.go`
+- **View available tasks**: `task --list`
+- **Build all**: `task build`
+- **Run tests**: `task test`
+- **Format code**: `task fmt`
+- **Vet code**: `task vet`
+- **Tidy dependencies**: `task tidy`
+- **Clean build artifacts**: `task clean`
+- **Install development tools**: `task install-tools`
+- **Dev server with hot reload**: `task dev-server` (requires air)
 
 Note: No test files currently exist in the codebase.
 
@@ -76,7 +77,7 @@ Note: No test files currently exist in the codebase.
 ├── hub.go               # Message hub and routing
 ├── websocket.go         # WebSocket server and socket handling
 ├── handshake.go         # WebRTC handshake management
-└── Makefile             # Build commands
+└── Taskfile.yml         # Task runner configuration
 ```
 
 ## Development Notes
@@ -87,4 +88,3 @@ Note: No test files currently exist in the codebase.
 - Uses unique IDs for client identification (generated via `xid.New()`)
 - All components implement clean interfaces for testability
 - Concurrent message handling via Go channels and goroutines
-

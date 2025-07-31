@@ -1,0 +1,55 @@
+version: "3"
+
+tasks:
+  server:
+    desc: Run server
+    cmd: go run cmd/server/main.go
+
+  client:
+    desc: Run client
+    cmd: go run cmd/client/main.go
+
+  signal:
+    desc: Run signal
+    cmd: go run cmd/signal/main.go
+
+  build:
+    desc: Build all applications
+    cmd: go build ./...
+
+  test:
+    desc: Run tests
+    cmd: go test ./...
+
+  fmt:
+    desc: Format code
+    cmd: go fmt ./...
+
+  vet:
+    desc: Vet code for issues
+    cmd: go vet ./...
+
+  tidy:
+    desc: Tidy dependencies
+    cmd: go mod tidy
+
+  clean:
+    desc: Clean build artifacts
+    cmd: go clean ./...
+
+  dev-server:
+    desc: Run server with hot reload (requires air)
+    cmd: air -c .air.toml --build.cmd "go build -o ./tmp/server cmd/server/main.go" --build.bin "./tmp/server"
+    preconditions:
+      - sh: which air
+        msg: "air is not installed. Install with: go install github.com/air-verse/air@latest"
+
+  install-tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/air-verse/air@latest
+
+  default:
+    desc: Show available tasks
+    cmd: task --list
+
