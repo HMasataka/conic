@@ -74,7 +74,7 @@ go run cmd/client/main.go -addr "localhost:8080"
 
 ```json
 {
-  "Type": "register"
+  "type": "register"
 }
 ```
 
@@ -82,8 +82,8 @@ go run cmd/client/main.go -addr "localhost:8080"
 
 ```json
 {
-  "Type": "unregister",
-  "Raw": "{\"ID\": \"client-id\"}"
+  "type": "unregister",
+  "raw": "{\"ID\": \"client-id\"}"
 }
 ```
 
@@ -91,8 +91,8 @@ go run cmd/client/main.go -addr "localhost:8080"
 
 ```json
 {
-  "Type": "sdp",
-  "Raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"SessionDescription\": {...}}"
+  "type": "sdp",
+  "raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"SessionDescription\": {...}}"
 }
 ```
 
@@ -100,8 +100,8 @@ go run cmd/client/main.go -addr "localhost:8080"
 
 ```json
 {
-  "Type": "candidate",
-  "Raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"Candidate\": \"candidate-string\"}"
+  "type": "candidate",
+  "raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"Candidate\": \"candidate-string\"}"
 }
 ```
 

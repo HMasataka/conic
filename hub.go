@@ -64,9 +64,9 @@ func (h *hub) Run() {
 }
 
 type MessageRequest struct {
-	ID       string
-	TargetID string
-	Message  []byte
+	ID       string `json:"id"`
+	TargetID string `json:"target_id"`
+	Message  []byte `json:"message"`
 }
 
 func (h *hub) SendMessage(req MessageRequest) {
@@ -74,8 +74,8 @@ func (h *hub) SendMessage(req MessageRequest) {
 }
 
 type RegisterRequest struct {
-	ID     string
-	Client HubClient
+	ID     string    `json:"id"`
+	Client HubClient `json:"client"`
 }
 
 func (h *hub) Register(req RegisterRequest) {
@@ -83,7 +83,7 @@ func (h *hub) Register(req RegisterRequest) {
 }
 
 type UnRegisterRequest struct {
-	ID string
+	ID string `json:"id"`
 }
 
 func (h *hub) Unregister(req UnRegisterRequest) {

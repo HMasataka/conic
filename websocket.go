@@ -126,28 +126,28 @@ const (
 )
 
 type Request struct {
-	Type string
-	Raw  []byte
+	Type string `json:"type"`
+	Raw  []byte `json:"raw"`
 }
 
 type WebsocketUnRegisterRequest struct {
-	ID string
+	ID string `json:"id"`
 }
 
 type WebsocketRegisterResponse struct {
-	ID string
+	ID string `json:"id"`
 }
 
 type SessionDescriptionRequest struct {
-	ID                 string
-	TargetID           string
-	SessionDescription webrtc.SessionDescription
+	ID                 string                    `json:"id"`
+	TargetID           string                    `json:"target_id"`
+	SessionDescription webrtc.SessionDescription `json:"session_description"`
 }
 
 type CandidateRequest struct {
-	ID        string
-	TargetID  string
-	Candidate string
+	ID        string `json:"id"`
+	TargetID  string `json:"target_id"`
+	Candidate string `json:"candidate"`
 }
 
 func (s *socket) handleMessage(message []byte) error {
