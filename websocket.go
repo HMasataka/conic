@@ -2,6 +2,8 @@ package conic
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -150,71 +152,169 @@ type CandidateRequest struct {
 	Candidate string `json:"candidate"`
 }
 
-func (s *socket) handleMessage(message []byte) error {
-	var req Request
-
-	if err := json.Unmarshal(message, &req); err != nil {
-		return err
+func validateRequest(req Request) error {
+	if req.Type == "" {
+		return errors.New("request type is required")
 	}
 
 	switch req.Type {
 	case RequestTypeRegister:
-		id := xid.New().String()
-
-		s.hub.Register(RegisterRequest{
-			ID:     id,
-			Client: s,
-		})
-
-		res := WebsocketRegisterResponse{
-			ID: id,
-		}
-
-		message, err := json.Marshal(res)
-		if err != nil {
-			return err
-		}
-
-		if _, err := s.Write(message); err != nil {
-			return err
-		}
+		// 登録リクエストの検証
 	case RequestTypeUnRegister:
-		var unregister WebsocketUnRegisterRequest
-
-		if err := json.Unmarshal(req.Raw, &unregister); err != nil {
-			return err
+		// 登録解除リクエストの検証
+		if len(req.Raw) == 0 {
+			return errors.New("unregister request requires ID")
 		}
-
-		s.hub.Unregister(UnRegisterRequest{
-			ID: unregister.ID,
-		})
-	case RequestTypeSDP:
-		var sdpRequest SessionDescriptionRequest
-
-		if err := json.Unmarshal(req.Raw, &sdpRequest); err != nil {
-			return err
+	case RequestTypeSDP, RequestTypeCandidate:
+		// SDP/候補リクエストの検証
+		if len(req.Raw) == 0 {
+			return errors.New("SDP/candidate request requires data")
 		}
-
-		s.hub.SendMessage(MessageRequest{
-			ID:       sdpRequest.ID,
-			TargetID: sdpRequest.TargetID,
-			Message:  message,
-		})
-	case RequestTypeCandidate:
-		var candidateRequest CandidateRequest
-
-		if err := json.Unmarshal(req.Raw, &candidateRequest); err != nil {
-			return err
-		}
-
-		s.hub.SendMessage(MessageRequest{
-			ID:       candidateRequest.ID,
-			TargetID: candidateRequest.TargetID,
-			Message:  message,
-		})
+	default:
+		return fmt.Errorf("unknown request type: %s", req.Type)
 	}
 
 	return nil
+}
+
+type MessageHandler interface {
+	Handle(raw []byte, socket *socket) error
+}
+
+type RegisterHandler struct{}
+
+func (h *RegisterHandler) Handle(raw []byte, s *socket) error {
+	id := xid.New().String()
+
+	s.hub.Register(RegisterRequest{
+		ID:     id,
+		Client: s,
+	})
+
+	res := WebsocketRegisterResponse{
+		ID: id,
+	}
+
+	message, err := json.Marshal(res)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.Write(message)
+	return err
+}
+
+type UnregisterHandler struct{}
+
+func (h *UnregisterHandler) Handle(raw []byte, s *socket) error {
+	var unregister WebsocketUnRegisterRequest
+
+	if err := json.Unmarshal(raw, &unregister); err != nil {
+		return err
+	}
+
+	s.hub.Unregister(UnRegisterRequest{
+		ID: unregister.ID,
+	})
+
+	return nil
+}
+
+type SDPHandler struct{}
+
+func (h *SDPHandler) Handle(raw []byte, s *socket) error {
+	var sdpRequest SessionDescriptionRequest
+
+	if err := json.Unmarshal(raw, &sdpRequest); err != nil {
+		return err
+	}
+
+	// 元のメッセージ全体を再構築
+	fullMessage := struct {
+		Type string `json:"type"`
+		Raw  []byte `json:"raw"`
+	}{
+		Type: RequestTypeSDP,
+		Raw:  raw,
+	}
+
+	message, err := json.Marshal(fullMessage)
+	if err != nil {
+		return err
+	}
+
+	s.hub.SendMessage(MessageRequest{
+		ID:       sdpRequest.ID,
+		TargetID: sdpRequest.TargetID,
+		Message:  message,
+	})
+
+	return nil
+}
+
+type CandidateHandler struct{}
+
+func (h *CandidateHandler) Handle(raw []byte, s *socket) error {
+	var candidateRequest CandidateRequest
+
+	if err := json.Unmarshal(raw, &candidateRequest); err != nil {
+		return err
+	}
+
+	// 元のメッセージ全体を再構築
+	fullMessage := struct {
+		Type string `json:"type"`
+		Raw  []byte `json:"raw"`
+	}{
+		Type: RequestTypeCandidate,
+		Raw:  raw,
+	}
+
+	message, err := json.Marshal(fullMessage)
+	if err != nil {
+		return err
+	}
+
+	s.hub.SendMessage(MessageRequest{
+		ID:       candidateRequest.ID,
+		TargetID: candidateRequest.TargetID,
+		Message:  message,
+	})
+
+	return nil
+}
+
+func (s *socket) getHandler(requestType string) MessageHandler {
+	switch requestType {
+	case RequestTypeRegister:
+		return &RegisterHandler{}
+	case RequestTypeUnRegister:
+		return &UnregisterHandler{}
+	case RequestTypeSDP:
+		return &SDPHandler{}
+	case RequestTypeCandidate:
+		return &CandidateHandler{}
+	default:
+		return nil
+	}
+}
+
+func (s *socket) handleMessage(message []byte) error {
+	var req Request
+	if err := json.Unmarshal(message, &req); err != nil {
+		return err
+	}
+
+	if err := validateRequest(req); err != nil {
+		return err
+	}
+
+	handler := s.getHandler(req.Type)
+	if handler == nil {
+		return fmt.Errorf("unknown request type: %s", req.Type)
+	}
+
+	return handler.Handle(req.Raw, s)
 }
 
 func (s *socket) write() {
