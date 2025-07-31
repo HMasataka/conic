@@ -5,13 +5,23 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"slices"
 
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
 	"github.com/rs/xid"
 )
 
-var upgrader = websocket.Upgrader{}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		// オリジンの検証を追加
+		allowedOrigins := []string{"http://localhost:3000", "https://yourdomain.com"}
+		origin := r.Header.Get("Origin")
+		return slices.Contains(allowedOrigins, origin)
+	},
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
 
 func NewServer(hub Hub) Server {
 	return &server{
