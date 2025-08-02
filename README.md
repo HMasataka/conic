@@ -114,6 +114,166 @@ go run cmd/client/main.go -addr "localhost:8080"
 - **Client**: シグナリングサーバーへの接続用WebSocketクライアント実装
 - **Handshake**: ICE候補処理を含むWebRTCピア接続管理
 
+### WebRTCシグナリングプロセス
+
+```mermaid
+sequenceDiagram
+    participant C1 as Client 1
+    participant S as Signaling Server
+    participant H as Hub
+    participant C2 as Client 2
+
+    Note over C1, C2: 1. 接続とクライアント登録
+
+    C1->>+S: WebSocket接続 (ws://localhost:3000/ws)
+    S->>S: WebSocket升級
+    S->>+H: Socket作成とサービス開始
+
+    C1->>S: {"type": "register"}
+    S->>S: RegisterHandler処理
+    S->>H: RegisterRequest {ID, Client}
+    H->>H: clients[id] = client
+    S-->>C1: RegisterResponse {ID}
+    Note over C1: クライアントIDを受信・保存
+
+    C2->>+S: WebSocket接続
+    C2->>S: {"type": "register"}
+    S->>H: RegisterRequest {ID, Client}
+    H->>H: clients[id] = client
+    S-->>C2: RegisterResponse {ID}
+
+    Note over C1, C2: 2. WebRTCハンドシェイク開始
+
+    C1->>C1: InitHandshake(config)
+    C1->>C1: CreateDataChannel("test")
+    C1->>C1: peerConnection.CreateOffer()
+
+    C1->>S: {"type": "sdp", "raw": SDPRequest}
+    Note right of S: SDPRequest: {ID, TargetID, SessionDescription}
+    S->>S: SDPHandler処理
+    S->>H: MessageRequest {ID, TargetID, Message}
+    H->>C2: SDP Offerメッセージ転送
+
+    Note over C2: 3. Answer作成と応答
+
+    C2->>C2: handleSDP() - Offer受信
+    C2->>C2: handshake.SetRemoteDescription(offer)
+    C2->>C2: peerConnection.CreateAnswer()
+    C2->>C2: handshake.SetLocalDescription(answer)
+
+    C2->>S: {"type": "sdp", "raw": SDPRequest}
+    Note right of S: SDPRequest: {ID, TargetID, SessionDescription}
+    S->>H: MessageRequest {ID, TargetID, Message}
+    H->>C1: SDP Answerメッセージ転送
+
+    Note over C1, C2: 4. ICE候補交換
+
+    C1->>C1: OnICECandidate イベント
+    C1->>S: {"type": "candidate", "raw": CandidateRequest}
+    S->>S: CandidateHandler処理
+    S->>H: MessageRequest {ID, TargetID, Message}
+    H->>C2: ICE候補メッセージ転送
+    C2->>C2: handshake.AddIceCandidate()
+
+    C2->>C2: OnICECandidate イベント
+    C2->>S: {"type": "candidate", "raw": CandidateRequest}
+    S->>H: MessageRequest {ID, TargetID, Message}
+    H->>C1: ICE候補メッセージ転送
+    C1->>C1: handshake.AddIceCandidate()
+
+    Note over C1, C2: 5. データチャネル通信
+
+    Note over C1: データチャネル確立後
+    C1->>C1: dataChannel.OnOpen()
+    C2->>C2: OnDataChannel() イベント
+
+    C1->>C1: dataChannel.Send(data)
+    Note right of C1: P2P直接通信
+    C1-->>C2: データ送信 (P2P)
+
+    Note over C1, C2: または、シグナリング経由でのデータ送信
+    C1->>S: {"type": "data_channel", "raw": DataChannelRequest}
+    S->>H: MessageRequest
+    H->>C2: データチャネルメッセージ転送
+```
+
+### アーキテクチャ構成図
+
+```mermaid
+graph TB
+    subgraph "Client Side"
+        C1[Client 1]
+        C2[Client 2]
+
+        subgraph "Client Components"
+            WS[WebSocket Connection]
+            HS[Handshake Manager]
+            DC[DataChannel Manager]
+        end
+    end
+
+    subgraph "Server Side"
+        subgraph "Signal Package"
+            WSS[WebSocket Server]
+            SOC[Socket Handler]
+
+            subgraph "Message Handlers"
+                RH[RegisterHandler]
+                UH[UnregisterHandler]
+                SH[SDPHandler]
+                CH[CandidateHandler]
+                DH[DataChannelHandler]
+            end
+        end
+
+        subgraph "Hub Package"
+            HUB[Hub]
+            REG[Register Channel]
+            UNREG[Unregister Channel]
+            MSG[Message Channel]
+            CLIENTS[Client Registry]
+        end
+    end
+
+    subgraph "WebRTC Layer"
+        PC1[PeerConnection 1]
+        PC2[PeerConnection 2]
+        ICE[ICE Candidates]
+        SDP[SDP Exchange]
+    end
+
+    C1 -.->|WebSocket| WSS
+    C2 -.->|WebSocket| WSS
+
+    WSS --> SOC
+    SOC --> RH
+    SOC --> UH
+    SOC --> SH
+    SOC --> CH
+    SOC --> DH
+
+    RH --> REG
+    UH --> UNREG
+    SH --> MSG
+    CH --> MSG
+    DH --> MSG
+
+    REG --> HUB
+    UNREG --> HUB
+    MSG --> HUB
+
+    HUB --> CLIENTS
+
+    C1 --> PC1
+    C2 --> PC2
+    PC1 -.->|P2P Data| PC2
+
+    PC1 --> ICE
+    PC2 --> ICE
+    PC1 --> SDP
+    PC2 --> SDP
+```
+
 ### 依存関係
 
 - [Gorilla WebSocket](https://github.com/gorilla/websocket) - WebSocket実装
