@@ -121,10 +121,11 @@ func (s *socket) read() {
 }
 
 const (
-	RequestTypeRegister   = "register"
-	RequestTypeUnRegister = "unregister"
-	RequestTypeSDP        = "sdp"
-	RequestTypeCandidate  = "candidate"
+	RequestTypeRegister    = "register"
+	RequestTypeUnRegister  = "unregister"
+	RequestTypeSDP         = "sdp"
+	RequestTypeCandidate   = "candidate"
+	RequestTypeDataChannel = "data_channel"
 )
 
 type Request struct {
@@ -152,6 +153,13 @@ type CandidateRequest struct {
 	Candidate string `json:"candidate"`
 }
 
+type DataChannelRequest struct {
+	ID       string `json:"id"`
+	TargetID string `json:"target_id"`
+	Label    string `json:"label"`
+	Data     []byte `json:"data"`
+}
+
 func validateRequest(req Request) error {
 	if req.Type == "" {
 		return errors.New("request type is required")
@@ -170,6 +178,11 @@ func validateRequest(req Request) error {
 		if len(req.Raw) == 0 {
 			return errors.New("SDP/candidate request requires data")
 		}
+	case RequestTypeDataChannel:
+		// データチャネルリクエストの検証
+		if len(req.Raw) == 0 {
+			return errors.New("data channel request requires data")
+		}
 	default:
 		return fmt.Errorf("unknown request type: %s", req.Type)
 	}
@@ -187,6 +200,8 @@ func (s *socket) getHandler(requestType string) MessageHandler {
 		return &SDPHandler{}
 	case RequestTypeCandidate:
 		return &CandidateHandler{}
+	case RequestTypeDataChannel:
+		return &DataChannelHandler{}
 	default:
 		return nil
 	}

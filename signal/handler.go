@@ -113,3 +113,35 @@ func (h *CandidateHandler) Handle(raw []byte, s *socket) error {
 
 	return nil
 }
+
+type DataChannelHandler struct{}
+
+func (h *DataChannelHandler) Handle(raw []byte, s *socket) error {
+	var dataChannelRequest DataChannelRequest
+
+	if err := json.Unmarshal(raw, &dataChannelRequest); err != nil {
+		return err
+	}
+
+	// 元のメッセージ全体を再構築
+	fullMessage := struct {
+		Type string `json:"type"`
+		Raw  []byte `json:"raw"`
+	}{
+		Type: RequestTypeDataChannel,
+		Raw:  raw,
+	}
+
+	message, err := json.Marshal(fullMessage)
+	if err != nil {
+		return err
+	}
+
+	s.hub.SendMessage(hub.MessageRequest{
+		ID:       dataChannelRequest.ID,
+		TargetID: dataChannelRequest.TargetID,
+		Message:  message,
+	})
+
+	return nil
+}
