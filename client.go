@@ -35,6 +35,8 @@ type Client struct {
 	handshake      *Handshake
 	dataChannels   map[string]*webrtc.DataChannel
 	dataChannelMux sync.Mutex
+	registered     bool
+	registeredMux  sync.Mutex
 }
 
 func (c *Client) Read() error {
@@ -55,20 +57,22 @@ func (c *Client) Read() error {
 }
 
 func (c *Client) handleMessage(message []byte) error {
-	var req cosig.Request
-
-	if err := json.Unmarshal(message, &req); err != nil {
-		var res cosig.RegisterResponse
-
-		if err := json.Unmarshal(message, &res); err != nil {
-			return err
-		}
-
+	// 登録レスポンスかどうか最初にチェック
+	var res cosig.RegisterResponse
+	if err := json.Unmarshal(message, &res); err == nil && res.ID != "" {
+		c.registeredMux.Lock()
 		c.id = res.ID
+		c.registered = true
+		c.registeredMux.Unlock()
 
 		log.Printf("registered with ID: %s", c.id)
-
 		return nil
+	}
+
+	var req cosig.Request
+	if err := json.Unmarshal(message, &req); err != nil {
+		log.Printf("failed to unmarshal message: %v", err)
+		return err
 	}
 
 	switch req.Type {
@@ -178,7 +182,11 @@ func (c *Client) Write() error {
 		case <-c.done:
 			return nil
 		case <-ticker.C:
-			if c.id != "" {
+			c.registeredMux.Lock()
+			isRegistered := c.registered
+			c.registeredMux.Unlock()
+
+			if isRegistered {
 				continue
 			}
 
@@ -194,6 +202,8 @@ func (c *Client) Write() error {
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return err
 			}
+
+			log.Println("sent registration request")
 		case <-interrupt:
 			log.Println("interrupt")
 
@@ -238,7 +248,7 @@ func (c *Client) sendCandidate(candidate *webrtc.ICECandidate) error {
 	}
 
 	candidateRequest := cosig.CandidateRequest{
-		ID:        c.id,
+		ID:        c.GetID(),
 		TargetID:  "",
 		Candidate: string(candidateJSON),
 	}
@@ -281,7 +291,7 @@ func (c *Client) CreateDataChannel(label string) (*webrtc.DataChannel, error) {
 
 func (c *Client) SendDataChannelMessage(targetID, label string, data []byte) error {
 	dataChannelRequest := cosig.DataChannelRequest{
-		ID:       c.id,
+		ID:       c.GetID(),
 		TargetID: targetID,
 		Label:    label,
 		Data:     data,
@@ -323,6 +333,18 @@ func (c *Client) GetHandshake() *Handshake {
 	return c.handshake
 }
 
+func (c *Client) GetID() string {
+	c.registeredMux.Lock()
+	defer c.registeredMux.Unlock()
+	return c.id
+}
+
+func (c *Client) IsRegistered() bool {
+	c.registeredMux.Lock()
+	defer c.registeredMux.Unlock()
+	return c.registered
+}
+
 func (c *Client) GetDataChannel(label string) *webrtc.DataChannel {
 	c.dataChannelMux.Lock()
 	defer c.dataChannelMux.Unlock()
@@ -358,7 +380,7 @@ func (c *Client) SendDataChannelDirect(label string, data []byte) error {
 
 func (c *Client) SendSDP(targetID string, sdp webrtc.SessionDescription) error {
 	sdpRequest := cosig.SessionDescriptionRequest{
-		ID:                 c.id,
+		ID:                 c.GetID(),
 		TargetID:           targetID,
 		SessionDescription: sdp,
 	}
