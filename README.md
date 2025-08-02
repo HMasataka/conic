@@ -1,6 +1,8 @@
-# Conic
+# Conic - WebRTC Signaling Server
 
-WebSocket接続を使用したリアルタイムピアツーピア通信を促進するGo言語ベースのWebRTCシグナリングサーバーです。
+Conic is a modern, scalable WebRTC signaling server written in Go. It provides a clean architecture for building real-time peer-to-peer communication applications.
+
+Conicは、Go言語で書かれたモダンでスケーラブルなWebRTCシグナリングサーバーです。リアルタイムピアツーピア通信アプリケーションを構築するためのクリーンなアーキテクチャを提供します。
 
 ## 機能
 
@@ -14,10 +16,10 @@ WebSocket接続を使用したリアルタイムピアツーピア通信を促�
 - Goチャンネルを使用した並行メッセージ処理
 - クリーンなインターフェースベースのアーキテクチャ
 
-## 必要要件
+## Prerequisites
 
-- Go 1.24.5 以降
-- 依存関係ダウンロード用のインターネット接続
+- Go 1.21 or higher
+- Task (optional, for using Taskfile commands)
 
 ## インストール
 

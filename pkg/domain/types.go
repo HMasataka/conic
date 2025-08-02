@@ -1,0 +1,80 @@
+package domain
+
+import (
+	"encoding/json"
+	"time"
+
+	"github.com/pion/webrtc/v4"
+)
+
+// MessageType represents the type of signaling message
+type MessageType string
+
+const (
+	MessageTypeRegister    MessageType = "register"
+	MessageTypeUnregister  MessageType = "unregister"
+	MessageTypeSDP         MessageType = "sdp"
+	MessageTypeCandidate   MessageType = "candidate"
+	MessageTypeDataChannel MessageType = "data_channel"
+)
+
+// Message represents a generic signaling message
+type Message struct {
+	ID        string          `json:"id"`
+	Type      MessageType     `json:"type"`
+	Timestamp time.Time       `json:"timestamp"`
+	Data      json.RawMessage `json:"data"`
+}
+
+// RegisterRequest represents a client registration request
+type RegisterRequest struct {
+	ClientID string `json:"client_id,omitempty"`
+}
+
+// RegisterResponse represents a registration response
+type RegisterResponse struct {
+	ClientID string `json:"client_id"`
+	Success  bool   `json:"success"`
+}
+
+// SDPMessage represents an SDP exchange message
+type SDPMessage struct {
+	FromID             string                    `json:"from_id"`
+	ToID               string                    `json:"to_id"`
+	SessionDescription webrtc.SessionDescription `json:"session_description"`
+}
+
+// ICECandidateMessage represents an ICE candidate message
+type ICECandidateMessage struct {
+	FromID    string                   `json:"from_id"`
+	ToID      string                   `json:"to_id"`
+	Candidate webrtc.ICECandidateInit `json:"candidate"`
+}
+
+// DataChannelMessage represents a data channel message
+type DataChannelMessage struct {
+	FromID  string `json:"from_id"`
+	ToID    string `json:"to_id"`
+	Label   string `json:"label"`
+	Payload []byte `json:"payload"`
+}
+
+// ConnectionState represents the state of a peer connection
+type ConnectionState string
+
+const (
+	ConnectionStateNew          ConnectionState = "new"
+	ConnectionStateConnecting   ConnectionState = "connecting"
+	ConnectionStateConnected    ConnectionState = "connected"
+	ConnectionStateDisconnected ConnectionState = "disconnected"
+	ConnectionStateFailed       ConnectionState = "failed"
+	ConnectionStateClosed       ConnectionState = "closed"
+)
+
+// PeerInfo represents information about a connected peer
+type PeerInfo struct {
+	ID             string          `json:"id"`
+	State          ConnectionState `json:"state"`
+	ConnectedAt    *time.Time      `json:"connected_at,omitempty"`
+	DisconnectedAt *time.Time      `json:"disconnected_at,omitempty"`
+}
