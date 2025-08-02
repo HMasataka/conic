@@ -132,11 +132,11 @@ type Request struct {
 	Raw  []byte `json:"raw"`
 }
 
-type WebsocketUnRegisterRequest struct {
+type UnRegisterRequest struct {
 	ID string `json:"id"`
 }
 
-type WebsocketRegisterResponse struct {
+type RegisterResponse struct {
 	ID string `json:"id"`
 }
 

@@ -40,7 +40,7 @@ func (c *Client) Read() error {
 			return err
 		}
 
-		var res cosig.WebsocketRegisterResponse
+		var res cosig.RegisterResponse
 
 		if err := json.Unmarshal(message, &res); err != nil {
 			return err

@@ -10,6 +10,7 @@ import (
 type MessageHandler interface {
 	Handle(raw []byte, socket *socket) error
 }
+
 type RegisterHandler struct{}
 
 func (h *RegisterHandler) Handle(raw []byte, s *socket) error {
@@ -20,7 +21,7 @@ func (h *RegisterHandler) Handle(raw []byte, s *socket) error {
 		Client: s,
 	})
 
-	res := WebsocketRegisterResponse{
+	res := RegisterResponse{
 		ID: id,
 	}
 
@@ -36,7 +37,7 @@ func (h *RegisterHandler) Handle(raw []byte, s *socket) error {
 type UnregisterHandler struct{}
 
 func (h *UnregisterHandler) Handle(raw []byte, s *socket) error {
-	var unregister WebsocketUnRegisterRequest
+	var unregister UnRegisterRequest
 
 	if err := json.Unmarshal(raw, &unregister); err != nil {
 		return err

@@ -56,6 +56,7 @@ func (h *hub) Run() {
 				}
 			} else {
 				if client, ok := h.clients[req.ID]; ok {
+					// 送信元が存在する場合は、エラーを送信
 					client.Error(errors.New("target not found"))
 				}
 			}
