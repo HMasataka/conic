@@ -32,57 +32,6 @@ go mod tidy
 
 ## 使用方法
 
-### サーバーの起動
-
-WebRTCシグナリングサーバーを開始します：
-
-```bash
-# Taskを使用
-task server
-
-# またはGoで直接実行
-go run cmd/server/main.go
-```
-
-サーバーは`localhost:3000`で起動し、`/ws`でWebSocket接続を受け付けます。
-
-### クライアントの起動
-
-シグナリングサーバーにクライアントを接続します：
-
-```bash
-# Taskを使用
-task client
-
-# またはGoで直接実行
-go run cmd/client/main.go
-```
-
-異なるサーバーアドレスを指定できます：
-
-```bash
-go run cmd/client/main.go -addr "localhost:8080"
-```
-
-### データチャネル通信デモ
-
-WebRTCハンドシェイク終了後にデータチャネルを使った個別通信を体験できます：
-
-```bash
-# データチャネルデモクライアントを起動
-task datachannel
-
-# またはGoで直接実行
-go run cmd/datachannel/main.go
-```
-
-データチャネルデモでは以下のコマンドが使用できます：
-
-- `send <target_id> <message>` - WebSocketシグナリング経由でメッセージ送信
-- `direct <message>` - データチャネル経由で直接メッセージ送信
-- `offer <target_id>` - WebRTCオファーを作成
-- `quit` - 終了
-
 ### P2P通信デモ
 
 完全なWebRTCピアツーピア通信を体験できます：
@@ -92,13 +41,14 @@ go run cmd/datachannel/main.go
 task p2p
 
 # オファー側として起動
+task p2p-offer
+# または
 task p2p -- -role=offer
 
 # アンサー側として起動
+task p2p-answer
+# または
 task p2p -- -role=answer
-
-# またはGoで直接実行
-go run cmd/p2p/main.go -role=peer
 ```
 
 P2P通信デモの使い方：
@@ -111,13 +61,13 @@ P2P通信デモの使い方：
 
 2. **2つのクライアントを起動**: 別々のターミナルで
 
-   ```bash
-   # ターミナル1: オファー側
-   task p2p -- -role=offer
+```bash
+# ターミナル1: オファー側
+task p2p-offer
 
-   # ターミナル2: アンサー側
-   task p2p -- -role=answer
-   ```
+# ターミナル2: アンサー側
+task p2p-answer
+```
 
 3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると自動的にWebRTCハンドシェイクが開始されます
 
@@ -146,10 +96,10 @@ P2P通信を素早く体験するには：
 task server
 
 # ターミナル2: オファー側クライアント起動
-task p2p -- -role=offer
+task p2p-offer
 
 # ターミナル3: アンサー側クライアント起動
-task p2p -- -role=answer
+task p2p-answer
 ```
 
 1. オファー側でアンサー側のピアIDを入力
@@ -378,13 +328,6 @@ graph TB
     PC2 --> SDP
 ```
 
-### 依存関係
-
-- [Gorilla WebSocket](https://github.com/gorilla/websocket) - WebSocket実装
-- [Pion WebRTC](https://github.com/pion/webrtc) - Pure Go WebRTC実装
-- [Chi Router](https://github.com/go-chi/chi) - 軽量HTTPルーター
-- [XID](https://github.com/rs/xid) - グローバル一意ID生成器
-
 ## 開発
 
 ### 利用可能なコマンド
@@ -399,11 +342,14 @@ task client
 # シグナルアプリを起動
 task signal
 
-# データチャネル通信デモを起動
-task datachannel
-
 # P2P通信デモを起動
 task p2p
+
+# P2P通信デモ（オファー側）を起動
+task p2p-offer
+
+# P2P通信デモ（アンサー側）を起動
+task p2p-answer
 
 # 利用可能なすべてのタスクを表示
 task --list
@@ -441,7 +387,6 @@ task dev-server
 │   ├── client/       # 基本WebSocketクライアント
 │   ├── server/       # WebRTCシグナリングサーバー
 │   ├── signal/       # シグナルアプリケーション
-│   ├── datachannel/  # データチャネル通信デモ
 │   └── p2p/          # P2P通信デモ
 ├── signal/
 │   ├── websocket.go  # WebSocketサーバー実装
@@ -453,15 +398,3 @@ task dev-server
 ├── go.mod            # Goモジュール定義
 └── Taskfile.yml      # タスクランナー設定
 ```
-
-## ライセンス
-
-このプロジェクトは、リポジトリで指定された条件の下で利用できます。
-
-## 貢献
-
-1. リポジトリをフォーク
-2. フィーチャーブランチを作成（`git checkout -b feature/amazing-feature`）
-3. 変更をコミット（`git commit -m 'Add some amazing feature'`）
-4. ブランチにプッシュ（`git push origin feature/amazing-feature`）
-5. プルリクエストを開く
