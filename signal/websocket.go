@@ -1,4 +1,4 @@
-package conic
+package signal
 
 import (
 	"encoding/json"
@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/HMasataka/conic/hub"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
-	"github.com/rs/xid"
 )
 
 var upgrader = websocket.Upgrader{
@@ -25,21 +25,21 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func NewServer(hub Hub) Server {
+func NewServer(hub hub.Hub) Server {
 	return &server{
 		hub: hub,
 	}
 }
 
 type server struct {
-	hub Hub
+	hub hub.Hub
 }
 
 type Server interface {
 	Serve(w http.ResponseWriter, r *http.Request)
 }
 
-func NewSocket(hub Hub, conn *websocket.Conn) Socket {
+func NewSocket(hub hub.Hub, conn *websocket.Conn) Socket {
 	return &socket{
 		conn:         conn,
 		hub:          hub,
@@ -58,7 +58,7 @@ type Socket interface {
 
 type socket struct {
 	conn         *websocket.Conn
-	hub          Hub
+	hub          hub.Hub
 	dataChannel  chan []byte
 	errorChannel chan error
 	done         chan struct{}
@@ -173,113 +173,6 @@ func validateRequest(req Request) error {
 	default:
 		return fmt.Errorf("unknown request type: %s", req.Type)
 	}
-
-	return nil
-}
-
-type MessageHandler interface {
-	Handle(raw []byte, socket *socket) error
-}
-
-type RegisterHandler struct{}
-
-func (h *RegisterHandler) Handle(raw []byte, s *socket) error {
-	id := xid.New().String()
-
-	s.hub.Register(RegisterRequest{
-		ID:     id,
-		Client: s,
-	})
-
-	res := WebsocketRegisterResponse{
-		ID: id,
-	}
-
-	message, err := json.Marshal(res)
-	if err != nil {
-		return err
-	}
-
-	_, err = s.Write(message)
-	return err
-}
-
-type UnregisterHandler struct{}
-
-func (h *UnregisterHandler) Handle(raw []byte, s *socket) error {
-	var unregister WebsocketUnRegisterRequest
-
-	if err := json.Unmarshal(raw, &unregister); err != nil {
-		return err
-	}
-
-	s.hub.Unregister(UnRegisterRequest{
-		ID: unregister.ID,
-	})
-
-	return nil
-}
-
-type SDPHandler struct{}
-
-func (h *SDPHandler) Handle(raw []byte, s *socket) error {
-	var sdpRequest SessionDescriptionRequest
-
-	if err := json.Unmarshal(raw, &sdpRequest); err != nil {
-		return err
-	}
-
-	// 元のメッセージ全体を再構築
-	fullMessage := struct {
-		Type string `json:"type"`
-		Raw  []byte `json:"raw"`
-	}{
-		Type: RequestTypeSDP,
-		Raw:  raw,
-	}
-
-	message, err := json.Marshal(fullMessage)
-	if err != nil {
-		return err
-	}
-
-	s.hub.SendMessage(MessageRequest{
-		ID:       sdpRequest.ID,
-		TargetID: sdpRequest.TargetID,
-		Message:  message,
-	})
-
-	return nil
-}
-
-type CandidateHandler struct{}
-
-func (h *CandidateHandler) Handle(raw []byte, s *socket) error {
-	var candidateRequest CandidateRequest
-
-	if err := json.Unmarshal(raw, &candidateRequest); err != nil {
-		return err
-	}
-
-	// 元のメッセージ全体を再構築
-	fullMessage := struct {
-		Type string `json:"type"`
-		Raw  []byte `json:"raw"`
-	}{
-		Type: RequestTypeCandidate,
-		Raw:  raw,
-	}
-
-	message, err := json.Marshal(fullMessage)
-	if err != nil {
-		return err
-	}
-
-	s.hub.SendMessage(MessageRequest{
-		ID:       candidateRequest.ID,
-		TargetID: candidateRequest.TargetID,
-		Message:  message,
-	})
 
 	return nil
 }

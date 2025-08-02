@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"time"
 
+	cosig "github.com/HMasataka/conic/signal"
 	"github.com/gorilla/websocket"
 )
 
@@ -39,7 +40,7 @@ func (c *Client) Read() error {
 			return err
 		}
 
-		var res WebsocketRegisterResponse
+		var res cosig.WebsocketRegisterResponse
 
 		if err := json.Unmarshal(message, &res); err != nil {
 			return err
@@ -67,8 +68,8 @@ func (c *Client) Write() error {
 				continue
 			}
 
-			req := Request{
-				Type: RequestTypeRegister,
+			req := cosig.Request{
+				Type: cosig.RequestTypeRegister,
 			}
 
 			message, err := json.Marshal(req)

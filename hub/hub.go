@@ -1,4 +1,4 @@
-package conic
+package hub
 
 import (
 	"errors"
