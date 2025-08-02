@@ -1,0 +1,21 @@
+server:
+  host: "localhost"
+  port: 3000
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+
+webrtc:
+  ice_servers:
+    - urls:
+        - "stun:stun.l.google.com:19302"
+        - "stun:stun1.l.google.com:19302"
+    # Example TURN server (uncomment and configure if needed)
+    # - urls:
+    #     - "turn:turn.example.com:3478"
+    #   username: "user"
+    #   credential: "pass"
+
+logging:
+  level: "info"    # debug, info, warn, error
+  format: "json"   # json, text
