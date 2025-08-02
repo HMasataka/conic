@@ -34,19 +34,19 @@ func DefaultPeerConnectionOptions() PeerConnectionOptions {
 
 // PeerConnection wraps a WebRTC peer connection
 type PeerConnection struct {
-	id              string
-	pc              *webrtc.PeerConnection
-	logger          *logging.Logger
-	eventBus        eventbus.Bus
-	options         PeerConnectionOptions
-	
+	id       string
+	pc       *webrtc.PeerConnection
+	logger   *logging.Logger
+	eventBus eventbus.Bus
+	options  PeerConnectionOptions
+
 	pendingCandidates []webrtc.ICECandidateInit
 	candidatesMu      sync.Mutex
-	
+
 	onICECandidate    func(*webrtc.ICECandidate) error
 	onDataChannel     func(*webrtc.DataChannel)
 	onConnectionState func(webrtc.PeerConnectionState)
-	
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -56,14 +56,14 @@ func NewPeerConnection(id string, options PeerConnectionOptions) (*PeerConnectio
 	config := webrtc.Configuration{
 		ICEServers: options.ICEServers,
 	}
-	
+
 	pc, err := webrtc.NewPeerConnection(config)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrorTypeWebRTC, "PC_CREATE_ERROR", "failed to create peer connection")
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	p := &PeerConnection{
 		id:                id,
 		pc:                pc,
@@ -74,10 +74,10 @@ func NewPeerConnection(id string, options PeerConnectionOptions) (*PeerConnectio
 		ctx:               ctx,
 		cancel:            cancel,
 	}
-	
+
 	// Set up event handlers
 	p.setupEventHandlers()
-	
+
 	return p, nil
 }
 
@@ -98,13 +98,13 @@ func (p *PeerConnection) CreateOffer(options *webrtc.OfferOptions) (webrtc.Sessi
 	if err != nil {
 		return webrtc.SessionDescription{}, errors.Wrap(err, errors.ErrorTypeWebRTC, "CREATE_OFFER_ERROR", "failed to create offer")
 	}
-	
+
 	if err := p.pc.SetLocalDescription(offer); err != nil {
 		return webrtc.SessionDescription{}, errors.Wrap(err, errors.ErrorTypeWebRTC, "SET_LOCAL_DESC_ERROR", "failed to set local description")
 	}
-	
+
 	p.logger.Debug("created offer", "peer_id", p.id)
-	
+
 	return offer, nil
 }
 
@@ -114,13 +114,13 @@ func (p *PeerConnection) CreateAnswer(options *webrtc.AnswerOptions) (webrtc.Ses
 	if err != nil {
 		return webrtc.SessionDescription{}, errors.Wrap(err, errors.ErrorTypeWebRTC, "CREATE_ANSWER_ERROR", "failed to create answer")
 	}
-	
+
 	if err := p.pc.SetLocalDescription(answer); err != nil {
 		return webrtc.SessionDescription{}, errors.Wrap(err, errors.ErrorTypeWebRTC, "SET_LOCAL_DESC_ERROR", "failed to set local description")
 	}
-	
+
 	p.logger.Debug("created answer", "peer_id", p.id)
-	
+
 	return answer, nil
 }
 
@@ -129,12 +129,12 @@ func (p *PeerConnection) SetRemoteDescription(sdp webrtc.SessionDescription) err
 	if err := p.pc.SetRemoteDescription(sdp); err != nil {
 		return errors.Wrap(err, errors.ErrorTypeWebRTC, "SET_REMOTE_DESC_ERROR", "failed to set remote description")
 	}
-	
+
 	p.logger.Debug("set remote description", "peer_id", p.id, "type", sdp.Type)
-	
+
 	// Process pending ICE candidates if any
 	p.processPendingCandidates()
-	
+
 	return nil
 }
 
@@ -148,13 +148,13 @@ func (p *PeerConnection) AddICECandidate(candidate webrtc.ICECandidateInit) erro
 		p.logger.Debug("queued ICE candidate", "peer_id", p.id)
 		return nil
 	}
-	
+
 	if err := p.pc.AddICECandidate(candidate); err != nil {
 		return errors.Wrap(err, errors.ErrorTypeWebRTC, "ADD_ICE_ERROR", "failed to add ICE candidate")
 	}
-	
+
 	p.logger.Debug("added ICE candidate", "peer_id", p.id)
-	
+
 	return nil
 }
 
@@ -164,11 +164,11 @@ func (p *PeerConnection) CreateDataChannel(label string, options *webrtc.DataCha
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrorTypeWebRTC, "CREATE_DC_ERROR", "failed to create data channel")
 	}
-	
+
 	dataChannel := NewDataChannel(dc, p.logger)
-	
+
 	p.logger.Info("created data channel", "peer_id", p.id, "label", label)
-	
+
 	return dataChannel, nil
 }
 
@@ -204,15 +204,15 @@ func (p *PeerConnection) setupEventHandlers() {
 		if candidate == nil {
 			return
 		}
-		
+
 		p.logger.Debug("ICE candidate gathered", "peer_id", p.id)
-		
+
 		if p.onICECandidate != nil {
 			if err := p.onICECandidate(candidate); err != nil {
 				p.logger.Error("ICE candidate handler error", "peer_id", p.id, "error", err)
 			}
 		}
-		
+
 		// Publish event
 		if p.eventBus != nil {
 			candidateJSON, _ := json.Marshal(candidate.ToJSON())
@@ -227,15 +227,15 @@ func (p *PeerConnection) setupEventHandlers() {
 			p.eventBus.PublishAsync(event)
 		}
 	})
-	
+
 	// Data channel handler
 	p.pc.OnDataChannel(func(dc *webrtc.DataChannel) {
 		p.logger.Info("data channel received", "peer_id", p.id, "label", dc.Label())
-		
+
 		if p.onDataChannel != nil {
 			p.onDataChannel(dc)
 		}
-		
+
 		// Publish event
 		if p.eventBus != nil {
 			event := eventbus.NewEvent(
@@ -249,24 +249,24 @@ func (p *PeerConnection) setupEventHandlers() {
 			p.eventBus.PublishAsync(event)
 		}
 	})
-	
+
 	// Connection state handler
 	p.pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
 		p.logger.Info("connection state changed", "peer_id", p.id, "state", state.String())
-		
+
 		if p.onConnectionState != nil {
 			p.onConnectionState(state)
 		}
-		
+
 		// Publish event
 		if p.eventBus != nil {
 			eventType := eventbus.EventClientConnected
-			if state == webrtc.PeerConnectionStateDisconnected || 
-			   state == webrtc.PeerConnectionStateFailed ||
-			   state == webrtc.PeerConnectionStateClosed {
+			if state == webrtc.PeerConnectionStateDisconnected ||
+				state == webrtc.PeerConnectionStateFailed ||
+				state == webrtc.PeerConnectionStateClosed {
 				eventType = eventbus.EventClientDisconnected
 			}
-			
+
 			event := eventbus.NewEvent(
 				eventType,
 				"webrtc-peer",
@@ -278,12 +278,12 @@ func (p *PeerConnection) setupEventHandlers() {
 			p.eventBus.PublishAsync(event)
 		}
 	})
-	
+
 	// ICE connection state handler
 	p.pc.OnICEConnectionStateChange(func(state webrtc.ICEConnectionState) {
 		p.logger.Debug("ICE connection state changed", "peer_id", p.id, "state", state.String())
 	})
-	
+
 	// Signaling state handler
 	p.pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
 		p.logger.Debug("signaling state changed", "peer_id", p.id, "state", state.String())
@@ -296,7 +296,7 @@ func (p *PeerConnection) processPendingCandidates() {
 	candidates := p.pendingCandidates
 	p.pendingCandidates = nil
 	p.candidatesMu.Unlock()
-	
+
 	for _, candidate := range candidates {
 		if err := p.pc.AddICECandidate(candidate); err != nil {
 			p.logger.Error("failed to add pending ICE candidate", "peer_id", p.id, "error", err)

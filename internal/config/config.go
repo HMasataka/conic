@@ -8,8 +8,8 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server  ServerConfig  `json:"server" yaml:"server"`
-	WebRTC  WebRTCConfig  `json:"webrtc" yaml:"webrtc"`
+	Server  ServerConfig   `json:"server" yaml:"server"`
+	WebRTC  WebRTCConfig   `json:"webrtc" yaml:"webrtc"`
 	Logging logging.Config `json:"logging" yaml:"logging"`
 }
 

@@ -51,8 +51,8 @@ type MessageHandlerFunc func(ctx context.Context, message Message) error
 
 // HubStats provides statistics about the hub
 type HubStats struct {
-	ConnectedClients int       `json:"connected_clients"`
-	MessagesSent     int64     `json:"messages_sent"`
-	MessagesReceived int64     `json:"messages_received"`
-	Uptime           float64   `json:"uptime_seconds"`
+	ConnectedClients int     `json:"connected_clients"`
+	MessagesSent     int64   `json:"messages_sent"`
+	MessagesReceived int64   `json:"messages_received"`
+	Uptime           float64 `json:"uptime_seconds"`
 }

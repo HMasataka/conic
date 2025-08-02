@@ -29,12 +29,12 @@ const (
 
 // Error represents a structured error with metadata
 type Error struct {
-	Type      ErrorType  `json:"type"`
-	Code      string     `json:"code"`
-	Message   string     `json:"message"`
-	Details   string     `json:"details,omitempty"`
-	Cause     error      `json:"-"`
-	Timestamp time.Time  `json:"timestamp"`
+	Type      ErrorType `json:"type"`
+	Code      string    `json:"code"`
+	Message   string    `json:"message"`
+	Details   string    `json:"details,omitempty"`
+	Cause     error     `json:"-"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 // Error implements the error interface

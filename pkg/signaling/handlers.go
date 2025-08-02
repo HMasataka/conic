@@ -104,7 +104,7 @@ func (h *SDPHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.M
 		).WithMetadata("from_id", sdpMsg.FromID).
 			WithMetadata("to_id", sdpMsg.ToID).
 			WithMetadata("sdp_type", string(sdpMsg.SessionDescription.Type))
-		
+
 		h.eventBus.PublishAsync(event)
 	}
 
@@ -158,7 +158,7 @@ func (h *ICECandidateHandler) Handle(ctx context.Context, msg *domain.Message) (
 			iceMsg,
 		).WithMetadata("from_id", iceMsg.FromID).
 			WithMetadata("to_id", iceMsg.ToID)
-		
+
 		h.eventBus.PublishAsync(event)
 	}
 
@@ -212,7 +212,7 @@ func (h *DataChannelHandler) Handle(ctx context.Context, msg *domain.Message) (*
 		).WithMetadata("from_id", dcMsg.FromID).
 			WithMetadata("to_id", dcMsg.ToID).
 			WithMetadata("label", dcMsg.Label)
-		
+
 		h.eventBus.PublishAsync(event)
 	}
 

@@ -202,14 +202,14 @@ func (s *Server) handleMessage(client domain.Client, message []byte) error {
 
 	// Add client ID to message context
 	ctx := context.WithValue(context.Background(), "client_id", client.ID())
-	
+
 	// Route to appropriate handler
 	if s.options.Router != nil {
 		s.logger.Info("routing message",
 			"client_id", client.ID(),
 			"message_type", msg.Type,
 		)
-		
+
 		response, err := s.options.Router.Handle(ctx, &msg)
 		if err != nil {
 			s.logger.Error("handler error",
@@ -226,20 +226,20 @@ func (s *Server) handleMessage(client domain.Client, message []byte) error {
 				"client_id", client.ID(),
 				"response_type", response.Type,
 			)
-			
+
 			responseData, err := json.Marshal(response)
 			if err != nil {
 				return errors.Wrap(err, errors.ErrorTypeInternal, "MARSHAL_ERROR", "failed to marshal response")
 			}
-			
-			s.logger.Debug("response data", 
+
+			s.logger.Debug("response data",
 				"client_id", client.ID(),
 				"data", string(responseData),
 			)
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			
+
 			return client.Send(ctx, responseData)
 		} else {
 			s.logger.Info("no response from handler",
@@ -250,7 +250,6 @@ func (s *Server) handleMessage(client domain.Client, message []byte) error {
 	} else {
 		s.logger.Warn("no router configured")
 	}
-	
+
 	return nil
 }
-

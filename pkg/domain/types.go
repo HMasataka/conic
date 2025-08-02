@@ -46,8 +46,8 @@ type SDPMessage struct {
 
 // ICECandidateMessage represents an ICE candidate message
 type ICECandidateMessage struct {
-	FromID    string                   `json:"from_id"`
-	ToID      string                   `json:"to_id"`
+	FromID    string                  `json:"from_id"`
+	ToID      string                  `json:"to_id"`
 	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 

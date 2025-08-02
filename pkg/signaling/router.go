@@ -18,13 +18,13 @@ type Router struct {
 // NewRouter creates a new signaling router
 func NewRouter(hub domain.Hub, logger *logging.Logger, eventBus eventbus.Bus) *Router {
 	registry := protocol.NewHandlerRegistry()
-	
+
 	// Register handlers
 	registry.Register(domain.MessageTypeRegister, NewRegisterHandler(hub, logger, eventBus))
 	registry.Register(domain.MessageTypeSDP, NewSDPHandler(hub, logger, eventBus))
 	registry.Register(domain.MessageTypeCandidate, NewICECandidateHandler(hub, logger, eventBus))
 	registry.Register(domain.MessageTypeDataChannel, NewDataChannelHandler(hub, logger, eventBus))
-	
+
 	return &Router{
 		registry: registry,
 		logger:   logger,

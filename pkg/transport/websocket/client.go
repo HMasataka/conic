@@ -255,6 +255,6 @@ func (f *ClientFactory) Create(conn io.ReadWriteCloser) (domain.Client, error) {
 func (f *ClientFactory) CreateFromWebSocket(conn *websocket.Conn) (domain.Client, error) {
 	client := NewClient(f.options.ID, conn, f.logger, f.options)
 	client.Start()
-	
+
 	return client, nil
 }

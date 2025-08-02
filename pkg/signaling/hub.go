@@ -30,7 +30,7 @@ type Hub struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	wg         sync.WaitGroup
-	
+
 	// Statistics
 	messagesSent     int64
 	messagesReceived int64
@@ -69,7 +69,7 @@ func (h *Hub) Stop() error {
 	h.logger.Info("stopping hub")
 	h.cancel()
 	h.wg.Wait()
-	
+
 	// Close all client connections
 	h.clients.Range(func(key, value interface{}) bool {
 		if client, ok := value.(domain.Client); ok {
@@ -77,12 +77,12 @@ func (h *Hub) Stop() error {
 		}
 		return true
 	})
-	
+
 	close(h.register)
 	close(h.unregister)
 	close(h.broadcast)
 	close(h.sendTo)
-	
+
 	h.logger.Info("hub stopped")
 	return nil
 }
@@ -174,21 +174,21 @@ func (h *Hub) GetClients() []domain.Client {
 // run is the main hub loop
 func (h *Hub) run() {
 	defer h.wg.Done()
-	
+
 	for {
 		select {
 		case <-h.ctx.Done():
 			return
-			
+
 		case client := <-h.register:
 			h.handleRegister(client)
-			
+
 		case clientID := <-h.unregister:
 			h.handleUnregister(clientID)
-			
+
 		case message := <-h.broadcast:
 			h.handleBroadcast(message)
-			
+
 		case msg := <-h.sendTo:
 			h.handleSendTo(msg.clientID, msg.message)
 		}
@@ -198,16 +198,16 @@ func (h *Hub) run() {
 // handleRegister handles client registration
 func (h *Hub) handleRegister(client domain.Client) {
 	clientID := client.ID()
-	
+
 	// Check if client already exists
 	if _, exists := h.clients.Load(clientID); exists {
 		h.logger.Warn("client already registered", "client_id", clientID)
 		return
 	}
-	
+
 	// Store client
 	h.clients.Store(clientID, client)
-	
+
 	h.logger.Info("client registered",
 		"client_id", clientID,
 		"total_clients", h.getClientCount(),
@@ -221,7 +221,7 @@ func (h *Hub) handleUnregister(clientID string) {
 		if c, ok := client.(domain.Client); ok {
 			c.Close()
 		}
-		
+
 		h.logger.Info("client unregistered",
 			"client_id", clientID,
 			"total_clients", h.getClientCount(),
@@ -232,13 +232,13 @@ func (h *Hub) handleUnregister(clientID string) {
 // handleBroadcast handles broadcasting messages to all clients
 func (h *Hub) handleBroadcast(message []byte) {
 	var successCount, errorCount int
-	
+
 	h.clients.Range(func(key, value interface{}) bool {
 		if client, ok := value.(domain.Client); ok {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			err := client.Send(ctx, message)
 			cancel()
-			
+
 			if err != nil {
 				errorCount++
 				h.logger.Error("failed to send to client",
@@ -252,7 +252,7 @@ func (h *Hub) handleBroadcast(message []byte) {
 		}
 		return true
 	})
-	
+
 	h.logger.Debug("broadcast complete",
 		"success_count", successCount,
 		"error_count", errorCount,
@@ -266,11 +266,11 @@ func (h *Hub) handleSendTo(clientID string, message []byte) {
 		h.logger.Warn("client not found", "client_id", clientID)
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	err := client.Send(ctx, message)
 	cancel()
-	
+
 	if err != nil {
 		h.logger.Error("failed to send to client",
 			"client_id", clientID,
