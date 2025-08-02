@@ -82,3 +82,7 @@ func (h *Handshake) HandlePendingCandidate() error {
 
 	return nil
 }
+
+func (h *Handshake) GetPeerConnection() *webrtc.PeerConnection {
+	return h.peerConnection
+}

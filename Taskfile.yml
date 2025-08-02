@@ -1,17 +1,21 @@
 version: "3"
 
 tasks:
-  server:
-    desc: Run server
-    cmd: go run cmd/server/main.go
-
-  client:
-    desc: Run client
-    cmd: go run cmd/client/main.go
-
   signal:
     desc: Run signal
-    cmd: go run cmd/signal/main.go
+    cmd: go run cmd/signal/main.go {{.CLI_ARGS}}
+
+  p2p:
+    desc: Run P2P demo client
+    cmd: go run cmd/p2p/main.go {{.CLI_ARGS}}
+
+  p2p-offer:
+    desc: Run P2P demo client as offer side
+    cmd: go run cmd/p2p/main.go -role=offer
+
+  p2p-answer:
+    desc: Run P2P demo client as answer side
+    cmd: go run cmd/p2p/main.go -role=answer
 
   build:
     desc: Build all applications
@@ -52,4 +56,3 @@ tasks:
   default:
     desc: Show available tasks
     cmd: task --list
-
