@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"slices"
 
 	"github.com/HMasataka/conic/hub"
 	"github.com/gorilla/websocket"
@@ -16,10 +15,7 @@ import (
 
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
-		// オリジンの検証を追加
-		allowedOrigins := []string{"http://localhost:3000", "https://yourdomain.com"}
-		origin := r.Header.Get("Origin")
-		return slices.Contains(allowedOrigins, origin)
+		return true
 	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
