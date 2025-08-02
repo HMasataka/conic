@@ -37,6 +37,8 @@ type Client struct {
 	dataChannelMux sync.Mutex
 	registered     bool
 	registeredMux  sync.Mutex
+	peerID         string
+	peerIDMux      sync.Mutex
 }
 
 func (c *Client) Read() error {
@@ -97,6 +99,11 @@ func (c *Client) handleSDP(raw []byte) error {
 
 	if c.handshake != nil {
 		log.Printf("📥 Received %s from %s", sdpRequest.SessionDescription.Type, sdpRequest.ID)
+
+		// ピアIDを設定
+		c.peerIDMux.Lock()
+		c.peerID = sdpRequest.ID
+		c.peerIDMux.Unlock()
 
 		if err := c.handshake.SetRemoteDescription(sdpRequest.SessionDescription); err != nil {
 			return err
@@ -247,9 +254,14 @@ func (c *Client) sendCandidate(candidate *webrtc.ICECandidate) error {
 		return err
 	}
 
+	// ピアIDを取得
+	c.peerIDMux.Lock()
+	targetID := c.peerID
+	c.peerIDMux.Unlock()
+
 	candidateRequest := cosig.CandidateRequest{
 		ID:        c.GetID(),
-		TargetID:  "",
+		TargetID:  targetID,
 		Candidate: string(candidateJSON),
 	}
 
