@@ -333,12 +333,6 @@ graph TB
 ### 利用可能なコマンド
 
 ```bash
-# サーバーを起動
-task server
-
-# クライアントを起動
-task client
-
 # シグナルアプリを起動
 task signal
 
