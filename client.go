@@ -92,10 +92,43 @@ func (c *Client) handleSDP(raw []byte) error {
 	}
 
 	if c.handshake != nil {
-		return c.handshake.SetRemoteDescription(sdpRequest.SessionDescription)
+		log.Printf("📥 Received %s from %s", sdpRequest.SessionDescription.Type, sdpRequest.ID)
+
+		if err := c.handshake.SetRemoteDescription(sdpRequest.SessionDescription); err != nil {
+			return err
+		}
+
+		// Offerを受信した場合、Answerを作成して送信
+		if sdpRequest.SessionDescription.Type == webrtc.SDPTypeOffer {
+			if err := c.createAndSendAnswer(sdpRequest.ID); err != nil {
+				log.Printf("Failed to create answer: %v", err)
+				return err
+			}
+		}
+
+		// 保留中の候補を処理
+		return c.handshake.HandlePendingCandidate()
 	}
 
 	return nil
+}
+
+func (c *Client) createAndSendAnswer(targetID string) error {
+	// Answer作成
+	peerConnection := c.handshake.GetPeerConnection()
+	answer, err := peerConnection.CreateAnswer(nil)
+	if err != nil {
+		return err
+	}
+
+	// ローカル記述設定
+	if err := c.handshake.SetLocalDescription(answer); err != nil {
+		return err
+	}
+
+	// Answerを送信
+	log.Printf("📤 Sending answer to %s", targetID)
+	return c.SendSDP(targetID, answer)
 }
 
 func (c *Client) handleCandidate(raw []byte) error {
@@ -321,4 +354,29 @@ func (c *Client) SendDataChannelDirect(label string, data []byte) error {
 	}
 
 	return dataChannel.Send(data)
+}
+
+func (c *Client) SendSDP(targetID string, sdp webrtc.SessionDescription) error {
+	sdpRequest := cosig.SessionDescriptionRequest{
+		ID:                 c.id,
+		TargetID:           targetID,
+		SessionDescription: sdp,
+	}
+
+	requestRaw, err := json.Marshal(sdpRequest)
+	if err != nil {
+		return err
+	}
+
+	req := cosig.Request{
+		Type: cosig.RequestTypeSDP,
+		Raw:  requestRaw,
+	}
+
+	message, err := json.Marshal(req)
+	if err != nil {
+		return err
+	}
+
+	return c.conn.WriteMessage(websocket.TextMessage, message)
 }

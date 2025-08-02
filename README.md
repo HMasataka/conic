@@ -8,6 +8,9 @@ WebSocket接続を使用したリアルタイムピアツーピア通信を促�
 - クライアント登録とメッセージルーティング
 - SDP（Session Description Protocol）交換のサポート
 - NAT越えのためのICE候補交換
+- **データチャネルによるP2P通信サポート**
+- **自動WebRTCハンドシェイク処理（Offer/Answer）**
+- **リアルタイムチャット機能**
 - Goチャンネルを使用した並行メッセージ処理
 - クリーンなインターフェースベースのアーキテクチャ
 
@@ -61,6 +64,98 @@ go run cmd/client/main.go
 go run cmd/client/main.go -addr "localhost:8080"
 ```
 
+### データチャネル通信デモ
+
+WebRTCハンドシェイク終了後にデータチャネルを使った個別通信を体験できます：
+
+```bash
+# データチャネルデモクライアントを起動
+task datachannel
+
+# またはGoで直接実行
+go run cmd/datachannel/main.go
+```
+
+データチャネルデモでは以下のコマンドが使用できます：
+
+- `send <target_id> <message>` - WebSocketシグナリング経由でメッセージ送信
+- `direct <message>` - データチャネル経由で直接メッセージ送信
+- `offer <target_id>` - WebRTCオファーを作成
+- `quit` - 終了
+
+### P2P通信デモ
+
+完全なWebRTCピアツーピア通信を体験できます：
+
+```bash
+# インタラクティブP2Pクライアントを起動
+task p2p
+
+# オファー側として起動
+task p2p -- -role=offer
+
+# アンサー側として起動
+task p2p -- -role=answer
+
+# またはGoで直接実行
+go run cmd/p2p/main.go -role=peer
+```
+
+P2P通信デモの使い方：
+
+1. **サーバー起動**: まずシグナリングサーバーを起動
+
+   ```bash
+   task server
+   ```
+
+2. **2つのクライアントを起動**: 別々のターミナルで
+
+   ```bash
+   # ターミナル1: オファー側
+   task p2p -- -role=offer
+
+   # ターミナル2: アンサー側
+   task p2p -- -role=answer
+   ```
+
+3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると自動的にWebRTCハンドシェイクが開始されます
+
+4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由でのリアルタイム通信が可能になります
+
+#### インタラクティブモードのコマンド
+
+```bash
+task p2p
+```
+
+利用可能なコマンド：
+
+- `offer <peer_id>` - 指定したピアにWebRTCオファーを作成・送信
+- `channel <label>` - 新しいデータチャネルを作成
+- `send <label> <message>` - データチャネル経由でメッセージ送信
+- `list` - アクティブなデータチャネルを一覧表示
+- `quit` - 終了
+
+## クイックスタート
+
+P2P通信を素早く体験するには：
+
+```bash
+# ターミナル1: サーバー起動
+task server
+
+# ターミナル2: オファー側クライアント起動
+task p2p -- -role=offer
+
+# ターミナル3: アンサー側クライアント起動
+task p2p -- -role=answer
+```
+
+1. オファー側でアンサー側のピアIDを入力
+2. WebRTC接続が自動確立
+3. データチャネル経由でリアルタイム通信開始！
+
 ## API
 
 ### WebSocketエンドポイント
@@ -102,6 +197,15 @@ go run cmd/client/main.go -addr "localhost:8080"
 {
   "type": "candidate",
   "raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"Candidate\": \"candidate-string\"}"
+}
+```
+
+#### データチャネルメッセージ送信
+
+```json
+{
+  "type": "data_channel",
+  "raw": "{\"ID\": \"sender-id\", \"TargetID\": \"receiver-id\", \"Label\": \"channel-name\", \"Data\": \"base64-encoded-data\"}"
 }
 ```
 
@@ -295,6 +399,12 @@ task client
 # シグナルアプリを起動
 task signal
 
+# データチャネル通信デモを起動
+task datachannel
+
+# P2P通信デモを起動
+task p2p
+
 # 利用可能なすべてのタスクを表示
 task --list
 
@@ -328,15 +438,20 @@ task dev-server
 ```bash
 /
 ├── cmd/
-│   ├── client/     # クライアントアプリケーション
-│   ├── server/     # サーバーアプリケーション
-│   └── signal/     # シグナルアプリケーション
-├── client.go       # クライアント実装
-├── hub.go          # メッセージハブとルーティング
-├── websocket.go    # WebSocketサーバー処理
-├── handshake.go    # WebRTCハンドシェイク管理
-├── go.mod          # Goモジュール定義
-└── Taskfile.yml    # タスクランナー設定
+│   ├── client/       # 基本WebSocketクライアント
+│   ├── server/       # WebRTCシグナリングサーバー
+│   ├── signal/       # シグナルアプリケーション
+│   ├── datachannel/  # データチャネル通信デモ
+│   └── p2p/          # P2P通信デモ
+├── signal/
+│   ├── websocket.go  # WebSocketサーバー実装
+│   └── handler.go    # メッセージハンドラー実装
+├── hub/
+│   └── hub.go        # メッセージハブとルーティング
+├── client.go         # クライアント実装（データチャネル管理含む）
+├── handshake.go      # WebRTCハンドシェイク管理
+├── go.mod            # Goモジュール定義
+└── Taskfile.yml      # タスクランナー設定
 ```
 
 ## ライセンス

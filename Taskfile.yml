@@ -13,6 +13,14 @@ tasks:
     desc: Run signal
     cmd: go run cmd/signal/main.go
 
+  datachannel:
+    desc: Run data channel demo client
+    cmd: go run cmd/datachannel/main.go
+
+  p2p:
+    desc: Run P2P demo client
+    cmd: go run cmd/p2p/main.go
+
   build:
     desc: Build all applications
     cmd: go build ./...
