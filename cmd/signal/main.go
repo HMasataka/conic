@@ -14,7 +14,7 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	hub := hub.NewHub()
+	hub := hub.New()
 	go hub.Run()
 
 	server := signal.NewServer(hub)
