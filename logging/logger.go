@@ -35,6 +35,17 @@ func New(cfg Config) *Logger {
 	}
 }
 
+func (l *Logger) WithFields(fields map[string]any) *Logger {
+	attrs := make([]any, 0, len(fields)*2)
+	for k, v := range fields {
+		attrs = append(attrs, k, v)
+	}
+	return &Logger{
+		Logger: l.With(attrs...),
+	}
+}
+
+// parseLevel parses a string log level
 func parseLevel(level string) slog.Level {
 	switch strings.ToLower(level) {
 	case "debug":
