@@ -1,4 +1,4 @@
-package signaling
+package hub
 
 import (
 	"context"
@@ -36,7 +36,7 @@ type sendMessage struct {
 	message  []byte
 }
 
-func NewHub(logger *logging.Logger) *Hub {
+func New(logger *logging.Logger) *Hub {
 	return &Hub{
 		register:   make(chan domain.Client, 100),
 		unregister: make(chan string, 100),
