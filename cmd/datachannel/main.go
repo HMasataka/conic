@@ -135,7 +135,8 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 	})
 
 	log.Println("Waiting for data channel to open... (Press Enter to exit)")
-	scanner.Scan()
+	waitScanner := bufio.NewScanner(os.Stdin)
+	waitScanner.Scan()
 }
 
 func runAnswerMode(pc *conic.PeerConnection, logging *logging.Logger) {
@@ -146,6 +147,6 @@ func runAnswerMode(pc *conic.PeerConnection, logging *logging.Logger) {
 	})
 
 	log.Println("Waiting for offers... (Press Enter to exit)")
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Scan()
+	waitScanner := bufio.NewScanner(os.Stdin)
+	waitScanner.Scan()
 }
