@@ -74,7 +74,7 @@ func (c *Client) Send(ctx context.Context, message []byte) error {
 	c.mutex.RLock()
 	if c.closed {
 		c.mutex.RUnlock()
-		return errors.New("")
+		return errors.New("client is closed")
 	}
 	c.mutex.RUnlock()
 
@@ -84,9 +84,9 @@ func (c *Client) Send(ctx context.Context, message []byte) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-c.ctx.Done():
-		return errors.New("")
+		return errors.New("client context done")
 	default:
-		return errors.New("")
+		return errors.New("send channel full or blocked")
 	}
 }
 
@@ -132,7 +132,7 @@ func (c *Client) Start() {
 func (c *Client) readPump() {
 	defer c.wg.Done()
 	defer func() {
-		c.logger.Debug("read pump stopped")
+		c.logger.Info("client read pump stopped")
 		c.Close()
 	}()
 
@@ -151,7 +151,9 @@ func (c *Client) readPump() {
 			messageType, message, err := c.conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					c.logger.Error("websocket read error", "error", err)
+					c.logger.Error("client websocket unexpected close error", "error", err)
+				} else {
+					c.logger.Info("client websocket connection closed", "error", err)
 				}
 				return
 			}

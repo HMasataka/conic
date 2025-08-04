@@ -127,7 +127,9 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 			wsType, rawMessage, err := conn.ReadMessage()
 			if err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					c.logger.Error("websocket read error", "error", err)
+					c.logger.Error("websocket unexpected close error", "error", err)
+				} else {
+					c.logger.Info("websocket connection closed", "error", err)
 				}
 				return
 			}
@@ -142,9 +144,12 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 				continue
 			}
 
+			c.logger.Info("received message", "type", message.Type, "id", message.ID)
+			
 			res, err := c.router.Handle(ctx, &message)
 			if err != nil {
-				c.logger.Error("message handler error", "error", err)
+				c.logger.Error("message handler error", "error", err, "message_type", message.Type)
+				continue
 			}
 			if res != nil {
 				responseData, err := json.Marshal(res)

@@ -42,9 +42,17 @@ func (r *DefaultHandlerRegistry) Get(messageType domain.MessageType) (Handler, b
 }
 
 func (r *DefaultHandlerRegistry) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
+	if msg == nil {
+		return nil, errors.New("message is nil")
+	}
+
 	handler, ok := r.Get(msg.Type)
 	if !ok {
-		return nil, errors.New("")
+		return nil, errors.New("no handler found for message type: " + string(msg.Type))
+	}
+
+	if handler == nil {
+		return nil, errors.New("handler is nil for message type: " + string(msg.Type))
 	}
 
 	return handler.Handle(ctx, msg)
