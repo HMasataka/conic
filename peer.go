@@ -31,10 +31,11 @@ func DefaultPeerConnectionOptions() PeerConnectionOptions {
 
 // PeerConnection wraps a WebRTC peer connection
 type PeerConnection struct {
-	id      string
-	pc      *webrtc.PeerConnection
-	logger  *logging.Logger
-	options PeerConnectionOptions
+	id       string
+	targetID string
+	pc       *webrtc.PeerConnection
+	logger   *logging.Logger
+	options  PeerConnectionOptions
 
 	pendingCandidates []webrtc.ICECandidateInit
 	candidatesMu      sync.Mutex
@@ -81,6 +82,15 @@ func (p *PeerConnection) ID() string {
 	return p.id
 }
 
+func (p *PeerConnection) TargetID() string {
+	return p.targetID
+}
+
+func (p *PeerConnection) SetTargetID(id string) {
+	p.targetID = id
+	p.logger.Debug("set target ID", "peer_id", p.id, "target_id", id)
+}
+
 // Close closes the peer connection
 func (p *PeerConnection) Close() error {
 	p.cancel()
@@ -89,13 +99,14 @@ func (p *PeerConnection) Close() error {
 
 // CreateOffer creates an SDP offer
 func (p *PeerConnection) CreateOffer(options *webrtc.OfferOptions) (webrtc.SessionDescription, error) {
+	p.logger.Debug("creating offer", "peer_id", p.id)
 	offer, err := p.pc.CreateOffer(options)
 	if err != nil {
-		return webrtc.SessionDescription{}, errors.New("")
+		return webrtc.SessionDescription{}, errors.New("failed to create offer: " + err.Error())
 	}
 
 	if err := p.pc.SetLocalDescription(offer); err != nil {
-		return webrtc.SessionDescription{}, errors.New("")
+		return webrtc.SessionDescription{}, errors.New("failed to set local description: " + err.Error())
 	}
 
 	p.logger.Debug("created offer", "peer_id", p.id)

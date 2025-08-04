@@ -5,41 +5,45 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/HMasataka/conic"
 	"github.com/HMasataka/conic/domain"
 	"github.com/HMasataka/conic/logging"
 	"github.com/rs/xid"
 )
 
-// RegisterHandler handles client registration
-type RegisterHandler struct {
+type RegisterRequestHandler struct {
 	hub    domain.Hub
 	logger *logging.Logger
 }
 
-// NewRegisterHandler creates a new register handler
-func NewRegisterHandler(hub domain.Hub, logger *logging.Logger) *RegisterHandler {
-	return &RegisterHandler{
+func NewRegisterRequestHandler(hub domain.Hub, logger *logging.Logger) *RegisterRequestHandler {
+	return &RegisterRequestHandler{
 		hub:    hub,
 		logger: logger,
 	}
 }
 
-// Handle implements protocol.Handler
-func (h *RegisterHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
+func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var req domain.RegisterRequest
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
 		return nil, errors.New("")
 	}
 
-	// Get client ID from context (set by websocket server)
-	clientID, ok := ctx.Value("client_id").(string)
-	if !ok || clientID == "" {
-		clientID = xid.New().String()
+	conn, ok := conic.ConnectionFromContext(ctx)
+	if !ok || conn == nil {
+		h.logger.Error("connection not found in context")
+		return nil, errors.New("connection not found")
 	}
 
-	// Create response
+	socket := domain.NewClient(req.ClientID, conn)
+
+	if err := h.hub.Register(socket); err != nil {
+		h.logger.Error("failed to register client", "client_id", req.ClientID, "error", err)
+		return nil, errors.New("failed to register client")
+	}
+
 	resp := domain.RegisterResponse{
-		ClientID: clientID,
+		ClientID: req.ClientID,
 		Success:  true,
 	}
 
@@ -50,18 +54,18 @@ func (h *RegisterHandler) Handle(ctx context.Context, msg *domain.Message) (*dom
 
 	response := &domain.Message{
 		ID:   xid.New().String(),
-		Type: domain.MessageTypeRegister,
+		Type: domain.MessageTypeRegisterResponse,
 		Data: respData,
 	}
 
-	h.logger.Info("client registered", "client_id", clientID)
+	h.logger.Info("client registered", "client_id", req.ClientID)
 
 	return response, nil
 }
 
 // CanHandle implements protocol.Handler
-func (h *RegisterHandler) CanHandle(messageType domain.MessageType) bool {
-	return messageType == domain.MessageTypeRegister
+func (h *RegisterRequestHandler) CanHandle(messageType domain.MessageType) bool {
+	return messageType == domain.MessageTypeRegisterRequest
 }
 
 // SDPHandler handles SDP exchange
@@ -96,21 +100,18 @@ func (h *SDPHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.M
 		"type", sdpMsg.SessionDescription.Type,
 	)
 
-	return nil, nil // No response needed for SDP forwarding
+	return nil, nil
 }
 
-// CanHandle implements protocol.Handler
 func (h *SDPHandler) CanHandle(messageType domain.MessageType) bool {
 	return messageType == domain.MessageTypeSDP
 }
 
-// ICECandidateHandler handles ICE candidate exchange
 type ICECandidateHandler struct {
 	hub    domain.Hub
 	logger *logging.Logger
 }
 
-// NewICECandidateHandler creates a new ICE candidate handler
 func NewICECandidateHandler(hub domain.Hub, logger *logging.Logger) *ICECandidateHandler {
 	return &ICECandidateHandler{
 		hub:    hub,
@@ -118,7 +119,6 @@ func NewICECandidateHandler(hub domain.Hub, logger *logging.Logger) *ICECandidat
 	}
 }
 
-// Handle implements protocol.Handler
 func (h *ICECandidateHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var iceMsg domain.ICECandidateMessage
 	if err := json.Unmarshal(msg.Data, &iceMsg); err != nil {
@@ -135,21 +135,18 @@ func (h *ICECandidateHandler) Handle(ctx context.Context, msg *domain.Message) (
 		"to", iceMsg.ToID,
 	)
 
-	return nil, nil // No response needed
+	return nil, nil
 }
 
-// CanHandle implements protocol.Handler
 func (h *ICECandidateHandler) CanHandle(messageType domain.MessageType) bool {
 	return messageType == domain.MessageTypeCandidate
 }
 
-// DataChannelHandler handles data channel messages
 type DataChannelHandler struct {
 	hub    domain.Hub
 	logger *logging.Logger
 }
 
-// NewDataChannelHandler creates a new data channel handler
 func NewDataChannelHandler(hub domain.Hub, logger *logging.Logger) *DataChannelHandler {
 	return &DataChannelHandler{
 		hub:    hub,
@@ -157,14 +154,12 @@ func NewDataChannelHandler(hub domain.Hub, logger *logging.Logger) *DataChannelH
 	}
 }
 
-// Handle implements protocol.Handler
 func (h *DataChannelHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var dcMsg domain.DataChannelMessage
 	if err := json.Unmarshal(msg.Data, &dcMsg); err != nil {
 		return nil, errors.New("")
 	}
 
-	// Forward message to target client
 	if err := h.hub.SendTo(dcMsg.ToID, msg.Data); err != nil {
 		return nil, errors.New("")
 	}
@@ -176,10 +171,9 @@ func (h *DataChannelHandler) Handle(ctx context.Context, msg *domain.Message) (*
 		"size", len(dcMsg.Payload),
 	)
 
-	return nil, nil // No response needed
+	return nil, nil
 }
 
-// CanHandle implements protocol.Handler
 func (h *DataChannelHandler) CanHandle(messageType domain.MessageType) bool {
 	return messageType == domain.MessageTypeDataChannel
 }

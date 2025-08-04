@@ -7,8 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HMasataka/conic"
 	"github.com/HMasataka/conic/domain"
 	"github.com/HMasataka/conic/logging"
+	"github.com/HMasataka/conic/router"
 	"github.com/gorilla/websocket"
 )
 
@@ -33,7 +35,7 @@ func DefaultServerOptions() ServerOptions {
 type Server struct {
 	ctx      context.Context
 	upgrader websocket.Upgrader
-	router   *Router
+	router   *router.Router
 	cancel   context.CancelFunc
 	logger   *logging.Logger
 	options  ServerOptions
@@ -43,7 +45,7 @@ type Server struct {
 	wg       sync.WaitGroup
 }
 
-func NewServer(router *Router, logger *logging.Logger, options ServerOptions) *Server {
+func NewServer(router *router.Router, logger *logging.Logger, options ServerOptions) *Server {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	upgrader := websocket.Upgrader{
@@ -96,12 +98,14 @@ func (c *Server) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
+	ctx := conic.WithConnection(r.Context(), conn)
+
 	c.wg.Add(2)
-	go c.readPump(conn)
+	go c.readPump(ctx, conn)
 	go c.writePump(conn)
 }
 
-func (c *Server) readPump(conn *websocket.Conn) {
+func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 	defer c.wg.Done()
 	defer func() {
 		c.logger.Debug("read pump stopped")
@@ -138,8 +142,7 @@ func (c *Server) readPump(conn *websocket.Conn) {
 				continue
 			}
 
-			// TODO: レソポンスを返却
-			res, err := c.router.Handle(context.Background(), &message)
+			res, err := c.router.Handle(ctx, &message)
 			if err != nil {
 				c.logger.Error("message handler error", "error", err)
 			}
