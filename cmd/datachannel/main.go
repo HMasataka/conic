@@ -61,7 +61,17 @@ func main() {
 
 	client := conic.NewClient(conn, router, logger, conic.DefaultClientOptions())
 	go client.Start()
+
 	logger.Info("Client started", "id", client.ID())
+
+	// Wait for WebSocket connection to be fully established
+	time.Sleep(100 * time.Millisecond)
+
+	// Register with server
+	if err := registerToServer(pc, client, logger); err != nil {
+		logger.Error("Failed to register with server", "error", err)
+		return
+	}
 
 	switch *role {
 	case "offer":
@@ -71,6 +81,39 @@ func main() {
 	default:
 		logger.Error("Invalid role specified", "role", *role)
 	}
+}
+
+// registerToServer sends registration message to the server
+func registerToServer(pc *conic.PeerConnection, client *conic.Client, logger *logging.Logger) error {
+	regReq := domain.RegisterRequest{
+		ClientID: pc.ID(),
+	}
+
+	regData, err := json.Marshal(regReq)
+	if err != nil {
+		return err
+	}
+
+	regMsg := domain.Message{
+		ID:        xid.New().String(),
+		Type:      domain.MessageTypeRegisterRequest,
+		Timestamp: time.Now(),
+		Data:      regData,
+	}
+
+	regMsgData, err := json.Marshal(regMsg)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	if err := client.Send(ctx, regMsgData); err != nil {
+		logger.Error("Failed to send registration message, continuing anyway", "error", err)
+		return nil // Don't fail completely, just warn
+	}
+
+	logger.Info("Registration message sent", "id", pc.ID())
+	return nil
 }
 
 func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *logging.Logger) {
