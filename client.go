@@ -2,6 +2,7 @@ package conic
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"time"
@@ -43,7 +44,6 @@ type Client struct {
 	logger   *logging.Logger
 	options  ClientOptions
 	sendChan chan []byte
-	handler  domain.MessageHandler
 	mutex    sync.RWMutex
 	closed   bool
 	wg       sync.WaitGroup
@@ -88,11 +88,6 @@ func (c *Client) Send(ctx context.Context, message []byte) error {
 	default:
 		return errors.New("send channel full or blocked")
 	}
-}
-
-func (c *Client) SetHandler(handler domain.MessageHandler) error {
-	c.handler = handler
-	return nil
 }
 
 func (c *Client) Close() error {
@@ -162,9 +157,31 @@ func (c *Client) readPump() {
 				continue
 			}
 
-			if c.handler != nil {
-				if err := c.handler(message); err != nil {
-					c.logger.Error("message handler error", "error", err)
+			c.logger.Info("Received message from server", "message", string(message))
+
+			var msg domain.Message
+			if err := json.Unmarshal(message, &msg); err != nil {
+				c.logger.Error("Failed to unmarshal message", "error", err)
+				return
+			}
+
+			ctx := context.Background()
+			response, err := c.router.Handle(ctx, &msg)
+			if err != nil {
+				c.logger.Error("Failed to handle message", "error", err)
+				return
+			}
+
+			if response != nil {
+				respData, err := json.Marshal(response)
+				if err != nil {
+					c.logger.Error("Failed to marshal response", "error", err)
+					return
+				}
+
+				if err := c.Send(ctx, respData); err != nil {
+					c.logger.Error("Failed to send response", "error", err)
+					return
 				}
 			}
 		}

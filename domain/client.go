@@ -7,8 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type MessageHandler func(message []byte) error
-
 type client struct {
 	id   string
 	conn *websocket.Conn
