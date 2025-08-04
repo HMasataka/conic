@@ -109,23 +109,21 @@ func (c *Server) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	defer conn.Close()
 	defer c.logger.Info("websocket connection handler finished")
 
-	sendChan := make(chan []byte, 256)
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
-		defer close(sendChan)
-		c.readPump(ctx, conn, sendChan)
+		c.readPump(ctx, conn)
 	}()
 
-	go c.writePump(conn, sendChan)
+	go c.writePump(conn)
 
 	// Wait for read pump to finish
 	<-done
 	c.logger.Info("connection closed")
 }
 
-func (c *Server) readPump(ctx context.Context, conn *websocket.Conn, sendChan chan []byte) {
+func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 	defer func() {
 		c.logger.Info("server read pump stopped")
 	}()
@@ -177,7 +175,7 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn, sendChan ch
 				}
 
 				select {
-				case sendChan <- responseData:
+				case c.sendChan <- responseData:
 				case <-ctx.Done():
 					return
 				default:
@@ -188,7 +186,7 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn, sendChan ch
 	}
 }
 
-func (c *Server) writePump(conn *websocket.Conn, sendChan chan []byte) {
+func (c *Server) writePump(conn *websocket.Conn) {
 	defer func() {
 		c.logger.Info("server write pump stopped")
 	}()
@@ -197,7 +195,7 @@ func (c *Server) writePump(conn *websocket.Conn, sendChan chan []byte) {
 		select {
 		case <-c.ctx.Done():
 			return
-		case message, ok := <-sendChan:
+		case message, ok := <-c.sendChan:
 			conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
 
 			if !ok {
@@ -211,10 +209,10 @@ func (c *Server) writePump(conn *websocket.Conn, sendChan chan []byte) {
 			}
 
 			// Drain any queued messages
-			n := len(sendChan)
+			n := len(c.sendChan)
 			for range n {
 				select {
-				case msg := <-sendChan:
+				case msg := <-c.sendChan:
 					if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 						c.logger.Error("websocket write error", "error", err)
 						return
