@@ -97,20 +97,37 @@ func (c *Server) Handle(w http.ResponseWriter, r *http.Request) {
 		c.logger.Error("failed to upgrade connection", "error", err)
 		return
 	}
-	defer conn.Close()
+
+	c.logger.Info("websocket connection established")
 
 	ctx := conic.WithConnection(r.Context(), conn)
 
-	c.wg.Add(2)
-	go c.readPump(ctx, conn)
-	go c.writePump(conn)
+	c.handleConnection(ctx, conn)
 }
 
-func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
-	defer c.wg.Done()
+func (c *Server) handleConnection(ctx context.Context, conn *websocket.Conn) {
+	defer conn.Close()
+	defer c.logger.Info("websocket connection handler finished")
+
+	sendChan := make(chan []byte, 256)
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		defer close(sendChan)
+		c.readPump(ctx, conn, sendChan)
+	}()
+
+	go c.writePump(conn, sendChan)
+
+	// Wait for read pump to finish
+	<-done
+	c.logger.Info("connection closed")
+}
+
+func (c *Server) readPump(ctx context.Context, conn *websocket.Conn, sendChan chan []byte) {
 	defer func() {
-		c.logger.Debug("read pump stopped")
-		c.Close()
+		c.logger.Info("server read pump stopped")
 	}()
 
 	conn.SetReadLimit(c.options.MaxMessageSize)
@@ -146,7 +163,7 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 			}
 
 			c.logger.Info("received message", "type", message.Type, "id", message.ID)
-			
+
 			res, err := c.router.Handle(ctx, &message)
 			if err != nil {
 				c.logger.Error("message handler error", "error", err, "message_type", message.Type)
@@ -159,28 +176,28 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 					continue
 				}
 
-				c.mutex.RLock()
-				if !c.closed {
-					c.sendChan <- responseData
+				select {
+				case sendChan <- responseData:
+				case <-ctx.Done():
+					return
+				default:
+					c.logger.Error("failed to send response, channel full")
 				}
-				c.mutex.RUnlock()
 			}
 		}
 	}
 }
 
-func (c *Server) writePump(conn *websocket.Conn) {
-	defer c.wg.Done()
+func (c *Server) writePump(conn *websocket.Conn, sendChan chan []byte) {
 	defer func() {
-		c.logger.Debug("write pump stopped")
+		c.logger.Info("server write pump stopped")
 	}()
 
 	for {
 		select {
 		case <-c.ctx.Done():
 			return
-
-		case message, ok := <-c.sendChan:
+		case message, ok := <-sendChan:
 			conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
 
 			if !ok {
@@ -194,10 +211,10 @@ func (c *Server) writePump(conn *websocket.Conn) {
 			}
 
 			// Drain any queued messages
-			n := len(c.sendChan)
+			n := len(sendChan)
 			for range n {
 				select {
-				case msg := <-c.sendChan:
+				case msg := <-sendChan:
 					if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 						c.logger.Error("websocket write error", "error", err)
 						return
