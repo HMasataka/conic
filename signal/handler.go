@@ -26,7 +26,8 @@ func NewRegisterRequestHandler(hub domain.Hub, logger *logging.Logger) *Register
 func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var req domain.RegisterRequest
 	if err := json.Unmarshal(msg.Data, &req); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to unmarshal register request", "error", err)
+		return nil, errors.New("failed to unmarshal register request")
 	}
 
 	conn, ok := conic.ConnectionFromContext(ctx)
@@ -86,12 +87,12 @@ func NewSDPHandler(hub domain.Hub, logger *logging.Logger) *SDPHandler {
 func (h *SDPHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var sdpMsg domain.SDPMessage
 	if err := json.Unmarshal(msg.Data, &sdpMsg); err != nil {
-		return nil, errors.New("")
+		return nil, errors.New("failed to unmarshal SDP message")
 	}
 
-	// Forward SDP to target client
 	if err := h.hub.SendTo(sdpMsg.ToID, msg.Data); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to send SDP message", "error", err, "to_id", sdpMsg.ToID)
+		return nil, errors.New("failed to send SDP message")
 	}
 
 	h.logger.Debug("SDP forwarded",
@@ -122,12 +123,14 @@ func NewICECandidateHandler(hub domain.Hub, logger *logging.Logger) *ICECandidat
 func (h *ICECandidateHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var iceMsg domain.ICECandidateMessage
 	if err := json.Unmarshal(msg.Data, &iceMsg); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to unmarshal ICE candidate message", "error", err)
+		return nil, errors.New("failed to unmarshal ICE candidate message")
 	}
 
 	// Forward ICE candidate to target client
 	if err := h.hub.SendTo(iceMsg.ToID, msg.Data); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to send ICE candidate", "error", err, "to_id", iceMsg.ToID)
+		return nil, errors.New("failed to send ICE candidate")
 	}
 
 	h.logger.Debug("ICE candidate forwarded",
@@ -157,11 +160,13 @@ func NewDataChannelHandler(hub domain.Hub, logger *logging.Logger) *DataChannelH
 func (h *DataChannelHandler) Handle(ctx context.Context, msg *domain.Message) (*domain.Message, error) {
 	var dcMsg domain.DataChannelMessage
 	if err := json.Unmarshal(msg.Data, &dcMsg); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to unmarshal data channel message", "error", err)
+		return nil, errors.New("failed to unmarshal data channel message")
 	}
 
 	if err := h.hub.SendTo(dcMsg.ToID, msg.Data); err != nil {
-		return nil, errors.New("")
+		h.logger.Error("failed to send data channel message", "error", err, "to_id", dcMsg.ToID)
+		return nil, errors.New("failed to send data channel message")
 	}
 
 	h.logger.Debug("data channel message forwarded",
