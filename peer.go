@@ -18,8 +18,9 @@ type PeerConnectionOptions struct {
 }
 
 // DefaultPeerConnectionOptions returns default options
-func DefaultPeerConnectionOptions() PeerConnectionOptions {
+func DefaultPeerConnectionOptions(logger *logging.Logger) PeerConnectionOptions {
 	return PeerConnectionOptions{
+		Logger: logger,
 		ICEServers: []webrtc.ICEServer{
 			{
 				URLs: []string{"stun:stun.l.google.com:19302"},

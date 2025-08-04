@@ -49,7 +49,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	pc, err := conic.NewPeerConnection(id, conic.DefaultPeerConnectionOptions())
+	pc, err := conic.NewPeerConnection(id, conic.DefaultPeerConnectionOptions(logger))
 	if err != nil {
 		logger.Error("Failed to create peer connection", "error", err)
 		return
