@@ -59,6 +59,7 @@ func NewServer(router *router.Router, logger *logging.Logger, options ServerOpti
 	return &Server{
 		ctx:      ctx,
 		upgrader: upgrader,
+		router:   router,
 		cancel:   cancel,
 		logger:   logger,
 		options:  options,
