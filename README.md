@@ -38,17 +38,17 @@ go mod tidy
 
 ```bash
 # インタラクティブP2Pクライアントを起動
-task p2p
+task datachannel
 
 # オファー側として起動
-task p2p-offer
+task datachannel-offer
 # または
-task p2p -- -role=offer
+task datachannel -- -role=offer
 
 # アンサー側として起動
-task p2p-answer
+task datachannel-answer
 # または
-task p2p -- -role=answer
+task datachannel -- -role=answer
 ```
 
 P2P通信デモの使い方：
@@ -63,10 +63,10 @@ P2P通信デモの使い方：
 
 ```bash
 # ターミナル1: オファー側
-task p2p-offer
+go run cmd/datachannel/main.go
 
 # ターミナル2: アンサー側
-task p2p-answer
+go run cmd/datachannel/main.go -role=answer
 ```
 
 3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると  
@@ -75,10 +75,10 @@ task p2p-answer
 4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由での  
    リアルタイム通信が可能になります
 
-#### インタラクティブモードのコマンド
+#### P2Pデモの特徴
 
 ```bash
-task p2p
+task datachannel
 ```
 
 利用可能なコマンド：
@@ -95,13 +95,13 @@ P2P通信を素早く体験するには：
 
 ```bash
 # ターミナル1: サーバー起動
-task server
+task signal
 
 # ターミナル2: オファー側クライアント起動
-task p2p-offer
+task datachannel-offer
 
 # ターミナル3: アンサー側クライアント起動
-task p2p-answer
+task datachannel-answer
 ```
 
 1. オファー側でアンサー側のピアIDを入力
@@ -165,12 +165,43 @@ task p2p-answer
 
 ### コアコンポーネント
 
-- **Hub**: クライアント接続を管理し、メッセージをルーティングする  
-  中央メッセージルーティングシステム
-- **WebSocket Server**: WebSocket接続とプロトコルアップグレードを処理
-- **Client**: シグナリングサーバーへの接続用WebSocket  
-  クライアント実装
-- **Handshake**: ICE候補処理を含むWebRTCピア接続管理
+#### Domain Layer (`domain/`)
+
+- **Hub Interface**: メッセージルーティングの契約定義
+- **Client Interface**: クライアント接続の契約定義
+- **Message Types**: JSONマーシャリング対応のメッセージ型定義
+- **統計情報**: Hub統計追跡機能
+
+#### Internal Packages (`internal/`)
+
+- **WebRTC (`internal/webrtc/`)**
+  - `PeerConnection`: WebRTCピア接続管理（統計、ICE候補キューイング、エラー処理）
+  - `DataChannel`: データチャネル管理（統計、イベントハンドラー、スレッドセーフ操作）
+- **Transport (`internal/transport/`)**
+  - `Client`: サーバーサイドクライアント表現
+  - `WebSocket Connection`: WebSocket接続管理・アップグレード処理
+- **Protocol (`internal/protocol/`)**
+  - `Message Handlers`: メッセージタイプ別ハンドラー（register, SDP, candidate, data_channel）
+  - `Router`: メッセージルーティング設定
+
+#### Hub Implementation (`hub/`)
+
+- **Central Routing**: クライアント登録・登録解除管理
+- **Message Broadcasting**: 接続クライアント間のメッセージルーティング
+- **Connection Tracking**: 接続統計と管理
+- **Concurrent Processing**: Goチャンネルを使用した並行処理
+
+#### Signal Package (`signal/`)
+
+- **WebSocket Server**: WebSocket接続とアップグレード処理
+- **P2P管理**: 完全なWebRTCハンドシェイクワークフロー
+- **Data Channel Management**: データチャネルとピア接続管理
+
+#### Logging (`logging/`)
+
+- **構造化ログ**: Go `slog`パッケージ使用
+- **コンテキスト対応**: コンテキスト認識ログ
+- **設定可能**: レベルとフォーマット（JSON/テキスト）設定可能
 
 ### WebRTCシグナリングプロセス
 
@@ -274,13 +305,26 @@ graph TB
         subgraph "Signal Package"
             WSS[WebSocket Server]
             SOC[Socket Handler]
+        end
 
-            subgraph "Message Handlers"
+        subgraph "Internal Packages"
+            subgraph "Transport Layer"
+                WS[WebSocket Connection]
+                CLI[Client Manager]
+            end
+
+            subgraph "Protocol Layer"
+                RTR[Message Router]
                 RH[RegisterHandler]
                 UH[UnregisterHandler]
                 SH[SDPHandler]
                 CH[CandidateHandler]
                 DH[DataChannelHandler]
+            end
+
+            subgraph "WebRTC Layer"
+                PC[PeerConnection]
+                DC[DataChannel]
             end
         end
 
@@ -304,11 +348,19 @@ graph TB
     C2 -.->|WebSocket| WSS
 
     WSS --> SOC
-    SOC --> RH
-    SOC --> UH
-    SOC --> SH
-    SOC --> CH
-    SOC --> DH
+    SOC --> WS
+    SOC --> CLI
+
+    WS --> RTR
+    CLI --> RTR
+
+    RTR --> RH
+    RTR --> UH
+    RTR --> SH
+    RTR --> CH
+    RTR --> DH
+
+    PC --> DC
 
     RH --> REG
     UH --> UNREG
@@ -326,6 +378,9 @@ graph TB
     C2 --> PC2
     PC1 -.->|P2P Data| PC2
 
+    PC --> ICE
+    PC --> SDP
+
     PC1 --> ICE
     PC2 --> ICE
     PC1 --> SDP
@@ -339,15 +394,6 @@ graph TB
 ```bash
 # シグナルアプリを起動
 task signal
-
-# P2P通信デモを起動
-task p2p
-
-# P2P通信デモ（オファー側）を起動
-task p2p-offer
-
-# P2P通信デモ（アンサー側）を起動
-task p2p-answer
 
 # 利用可能なすべてのタスクを表示
 task --list
@@ -381,20 +427,23 @@ task dev-server
 
 ```bash
 /
-├── cmd/
-│   ├── client/       # 基本WebSocketクライアント
-│   ├── server/       # WebRTCシグナリングサーバー
-│   ├── signal/       # シグナルアプリケーション
-│   └── p2p/          # P2P通信デモ
-├── signal/
-│   ├── websocket.go  # WebSocketサーバー実装
-│   └── handler.go    # メッセージハンドラー実装
-├── hub/
-│   └── hub.go        # メッセージハブとルーティング
-├── client.go         # クライアント実装（データチャネル管理含む）
-├── handshake.go      # WebRTCハンドシェイク管理
-├── go.mod            # Goモジュール定義
-└── Taskfile.yml      # タスクランナー設定
+├── cmd/                    # アプリケーション
+│   ├── signal/main.go      # シグナリングサーバーアプリ
+│   └── datachannel/main.go # P2Pデータチャネルデモ
+├── internal/               # 内部パッケージ（外部から非公開）
+│   ├── webrtc/            # WebRTC関連コンポーネント
+│   ├── transport/         # 通信・トランスポート層
+│   └── protocol/          # プロトコル・メッセージ処理
+├── domain/                # コアインターフェース・ドメインモデル
+├── hub/                   # ハブ実装
+├── signal/                # シグナリングサーバー
+├── registry/              # ハンドラーレジストリ
+├── logging/               # ログユーティリティ
+│   ├── logger.go         # 構造化ログ実装
+│   └── context.go        # ログコンテキスト
+├── context.go             # コンテキストユーティリティ
+├── go.mod                 # Goモジュール定義
+└── Taskfile.yml           # タスクランナー設定
 ```
 
 ## 参考文献
