@@ -141,3 +141,20 @@ The project follows a domain-driven design with clean interfaces and modular pac
 - Concurrent message handling via Go channels and goroutines
 - Comprehensive Japanese documentation available in README.md
 - WebRTC terminology and ICE protocol explanations in docs/
+
+## Markdown Formatting Guidelines
+
+When editing or creating Markdown files in this repository, follow these markdownlint-compliant guidelines:
+
+- **Use consistent heading structure** - Start with H1 (`#`) and increment hierarchically
+- **Add blank lines around headings** - Always have empty lines before and after headings
+- **Consistent list formatting** - Use `-` for unordered lists with proper spacing
+- **Line length** - Keep lines under 80 characters when possible (MD013)
+- **URL formatting** - Use `<https://example.com>` format for bare URLs or proper link syntax `[text](url)`
+- **Code blocks** - Always specify language for syntax highlighting
+- **Trailing punctuation** - Be consistent with punctuation in headings and lists
+- **Empty lines** - Use single empty line between sections
+- **No trailing spaces** - Remove trailing whitespace from lines
+- **File endings** - End files with a single newline
+
+Run `markdownlint README.md` before committing to ensure compliance with these standards.
