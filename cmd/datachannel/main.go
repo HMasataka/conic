@@ -59,7 +59,7 @@ func main() {
 
 	router := conic.NewRouter(pc, logger)
 
-	client := conic.NewClient(conn, router, logger, conic.DefaultClientOptions())
+	client := conic.NewClient(conn, router, logger, conic.DefaultClientOptions(id))
 	go client.Start(context.Background())
 
 	logger.Info("Client started", "id", client.ID())

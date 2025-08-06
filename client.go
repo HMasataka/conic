@@ -15,8 +15,9 @@ type ClientOptions struct {
 	websocket.ConnectionOptions
 }
 
-func DefaultClientOptions() ClientOptions {
+func DefaultClientOptions(id string) ClientOptions {
 	return ClientOptions{
+		ID:                id,
 		ConnectionOptions: websocket.DefaultConnectionOptions(),
 	}
 }
