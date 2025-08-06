@@ -110,6 +110,8 @@ func (p *PeerConnection) CreateOffer(options *webrtc.OfferOptions) (webrtc.Sessi
 		return webrtc.SessionDescription{}, errors.New("failed to set local description: " + err.Error())
 	}
 
+	<-webrtc.GatheringCompletePromise(p.pc)
+
 	p.logger.Debug("created offer", "peer_id", p.id)
 
 	return offer, nil
