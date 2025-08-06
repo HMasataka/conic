@@ -69,9 +69,11 @@ task p2p-offer
 task p2p-answer
 ```
 
-3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると自動的にWebRTCハンドシェイクが開始されます
+3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると  
+   自動的にWebRTCハンドシェイクが開始されます
 
-4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由でのリアルタイム通信が可能になります
+4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由での  
+   リアルタイム通信が可能になります
 
 #### インタラクティブモードのコマンド
 
@@ -163,9 +165,11 @@ task p2p-answer
 
 ### コアコンポーネント
 
-- **Hub**: クライアント接続を管理し、メッセージをルーティングする中央メッセージルーティングシステム
+- **Hub**: クライアント接続を管理し、メッセージをルーティングする  
+  中央メッセージルーティングシステム
 - **WebSocket Server**: WebSocket接続とプロトコルアップグレードを処理
-- **Client**: シグナリングサーバーへの接続用WebSocketクライアント実装
+- **Client**: シグナリングサーバーへの接続用WebSocket  
+  クライアント実装
 - **Handshake**: ICE候補処理を含むWebRTCピア接続管理
 
 ### WebRTCシグナリングプロセス
@@ -392,3 +396,24 @@ task dev-server
 ├── go.mod            # Goモジュール定義
 └── Taskfile.yml      # タスクランナー設定
 ```
+
+## 参考文献
+
+### Pion WebRTCを使用したP2Pシグナリングサーバープロジェクト
+
+#### ファイル転送系
+
+- **[webwormhole](https://github.com/saljam/webwormhole)** - P2P認証付きWebRTC通信
+- **[peerbeam](https://github.com/6b70/peerbeam)** - 高速・セキュアなP2Pファイル転送
+- **[gfile](https://github.com/Antonito/gfile)** - WebRTC経由の直接ファイル転送
+
+#### ネットワーク・トンネリング系
+
+- **[pleer](https://github.com/raphadam/pleer)** - WebRTC経由でローカルポートをセキュアに転送
+- **[rtctunnel](https://github.com/rtctunnel/rtctunnel)** - WebRTC上のネットワークトンネル
+- **[ssh-p2p](https://github.com/nobonobo/ssh-p2p)** - SSH P2Pトンネリングサーバー/クライアント
+
+#### 公式リソース
+
+- **[Pion WebRTC Examples](https://github.com/pion/example-webrtc-applications)** - 実用的なWebRTCアプリケーション例
+- **[Awesome Pion](https://github.com/pion/awesome-pion)** - Pionを使用したプロジェクト集
