@@ -142,8 +142,32 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 		log.Fatal("create data channel:", err)
 	}
 
+	// Set up message handler for offer side
+	dataChannel.OnMessage(func(data []byte) {
+		log.Printf("📩 Received: %s", string(data))
+	})
+
 	dataChannel.OnOpen(func() {
 		log.Printf("📨 Data channel '%s' is open", dataChannel.Label())
+
+		// Send sample messages
+		go func() {
+			time.Sleep(1 * time.Second)
+			messages := []string{
+				"Hello from offer side!",
+				"This is a sample message",
+				"WebRTC data channel is working!",
+			}
+
+			for i, msg := range messages {
+				if err := dataChannel.SendText(msg); err != nil {
+					log.Printf("Failed to send message %d: %v", i+1, err)
+				} else {
+					log.Printf("✅ Sent: %s", msg)
+				}
+				time.Sleep(2 * time.Second)
+			}
+		}()
 	})
 
 	offer, err := pc.CreateOffer(nil)
@@ -187,8 +211,33 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 func runAnswerMode(pc *conic.PeerConnection, logging *logging.Logger) {
 	logging.Info("Running in answer mode")
 
-	pc.OnDataChannel(func(dataChannel *webrtc.DataChannel) {
-		log.Printf("📨 Data channel '%s' is open", dataChannel.Label())
+	pc.OnDataChannel(func(dc *webrtc.DataChannel) {
+		log.Printf("📨 Data channel '%s' is open", dc.Label())
+
+		dataChannel := conic.NewDataChannel(dc, logging)
+
+		dataChannel.OnMessage(func(data []byte) {
+			log.Printf("📩 Received: %s", string(data))
+		})
+
+		// Send sample response messages
+		go func() {
+			time.Sleep(2 * time.Second)
+			messages := []string{
+				"Hello from answer side!",
+				"Thanks for the messages!",
+				"Data channel communication confirmed!",
+			}
+
+			for i, msg := range messages {
+				if err := dataChannel.SendText(msg); err != nil {
+					log.Printf("Failed to send response %d: %v", i+1, err)
+				} else {
+					log.Printf("✅ Sent: %s", msg)
+				}
+				time.Sleep(2 * time.Second)
+			}
+		}()
 	})
 
 	log.Println("Waiting for data channel to open... (Press Enter to exit)")
