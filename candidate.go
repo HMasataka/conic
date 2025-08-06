@@ -7,6 +7,7 @@ import (
 	"github.com/HMasataka/conic/domain"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
+	"github.com/rs/xid"
 )
 
 func OnIceCandidate(conn *websocket.Conn, pc *PeerConnection) func(*webrtc.ICECandidate) error {
@@ -29,7 +30,7 @@ func OnIceCandidate(conn *websocket.Conn, pc *PeerConnection) func(*webrtc.ICECa
 		}
 
 		req := domain.Message{
-			ID:        targetID,
+			ID:        xid.New().String(),
 			Type:      domain.MessageTypeCandidate,
 			Timestamp: time.Now(),
 			Data:      data,

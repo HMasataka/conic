@@ -119,11 +119,6 @@ func registerToServer(pc *conic.PeerConnection, client *conic.Client, logger *lo
 func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *logging.Logger) {
 	logging.Info("Running in offer mode")
 
-	offer, err := pc.CreateOffer(nil)
-	if err != nil {
-		log.Fatal("create offer:", err)
-	}
-
 	var targetID string
 
 	log.Println("Enter target peer ID to create offer:")
@@ -138,6 +133,13 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 		break
 	}
 
+	pc.SetTargetID(targetID)
+
+	offer, err := pc.CreateOffer(nil)
+	if err != nil {
+		log.Fatal("create offer:", err)
+	}
+
 	sdpMessage := domain.SDPMessage{
 		FromID:             pc.ID(),
 		ToID:               targetID,
@@ -150,7 +152,7 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 	}
 
 	req := domain.Message{
-		ID:        pc.TargetID(),
+		ID:        xid.New().String(),
 		Type:      domain.MessageTypeSDP,
 		Timestamp: time.Now(),
 		Data:      data,
