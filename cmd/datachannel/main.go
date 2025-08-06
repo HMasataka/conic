@@ -135,6 +135,17 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 
 	pc.SetTargetID(targetID)
 
+	const dataChannelLabel = "chat"
+
+	dataChannel, err := pc.CreateDataChannel(dataChannelLabel, nil)
+	if err != nil {
+		log.Fatal("create data channel:", err)
+	}
+
+	dataChannel.OnOpen(func() {
+		log.Printf("📨 Data channel '%s' is open", dataChannel.Label())
+	})
+
 	offer, err := pc.CreateOffer(nil)
 	if err != nil {
 		log.Fatal("create offer:", err)
@@ -167,17 +178,6 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 	if err := client.Send(ctx, msg); err != nil {
 		log.Fatal("send message:", err)
 	}
-
-	const dataChannelLabel = "chat"
-
-	dataChannel, err := pc.CreateDataChannel(dataChannelLabel, nil)
-	if err != nil {
-		log.Fatal("create data channel:", err)
-	}
-
-	dataChannel.OnOpen(func() {
-		log.Printf("📨 Data channel '%s' is open", dataChannel.Label())
-	})
 
 	log.Println("Waiting for data channel to open... (Press Enter to exit)")
 	waitScanner := bufio.NewScanner(os.Stdin)
