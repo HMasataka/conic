@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"os"
 	"strings"
+
+	"github.com/sytallax/prettylog"
 )
 
 type Config struct {
@@ -27,7 +29,7 @@ func New(cfg Config) *Logger {
 	case "json":
 		handler = slog.NewJSONHandler(os.Stdout, opts)
 	default:
-		handler = slog.NewTextHandler(os.Stdout, opts)
+		handler = prettylog.NewHandler(opts)
 	}
 
 	return &Logger{
