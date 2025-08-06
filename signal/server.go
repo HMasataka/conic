@@ -3,6 +3,7 @@ package signal
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"sync"
 	"time"
@@ -66,6 +67,26 @@ func NewServer(router *router.Router, logger *logging.Logger, options ServerOpti
 	}
 }
 
+func (c *Server) Send(ctx context.Context, message []byte) error {
+	c.mutex.RLock()
+	if c.closed {
+		c.mutex.RUnlock()
+		return errors.New("server is closed")
+	}
+	c.mutex.RUnlock()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-c.ctx.Done():
+		return errors.New("server context done")
+	case c.sendChan <- message:
+		return nil
+	default:
+		return errors.New("send channel full or blocked")
+	}
+}
+
 func (c *Server) Close() error {
 	c.mutex.Lock()
 	if c.closed {
@@ -113,7 +134,7 @@ func (c *Server) handleConnection(ctx context.Context, conn *websocket.Conn) {
 		c.readPump(ctx, conn)
 	}()
 
-	go c.writePump(conn)
+	go c.writePump(ctx, conn)
 
 	// Wait for read pump to finish
 	<-done
@@ -135,6 +156,8 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 	for {
 		select {
 		case <-c.ctx.Done():
+			return
+		case <-ctx.Done():
 			return
 		default:
 			wsType, rawMessage, err := conn.ReadMessage()
@@ -171,19 +194,16 @@ func (c *Server) readPump(ctx context.Context, conn *websocket.Conn) {
 					continue
 				}
 
-				select {
-				case c.sendChan <- responseData:
-				case <-ctx.Done():
-					return
-				default:
-					c.logger.Error("failed to send response, channel full")
+				if err := c.Send(ctx, responseData); err != nil {
+					c.logger.Error("Failed to send response", "error", err)
+					continue
 				}
 			}
 		}
 	}
 }
 
-func (c *Server) writePump(conn *websocket.Conn) {
+func (c *Server) writePump(ctx context.Context, conn *websocket.Conn) {
 	defer func() {
 		c.logger.Info("server write pump stopped")
 	}()
@@ -191,6 +211,8 @@ func (c *Server) writePump(conn *websocket.Conn) {
 	for {
 		select {
 		case <-c.ctx.Done():
+			return
+		case <-ctx.Done():
 			return
 		case message, ok := <-c.sendChan:
 			conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))

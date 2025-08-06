@@ -78,12 +78,12 @@ func (c *Client) Send(ctx context.Context, message []byte) error {
 	c.mutex.RUnlock()
 
 	select {
-	case c.sendChan <- message:
-		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-c.ctx.Done():
 		return errors.New("client context done")
+	case c.sendChan <- message:
+		return nil
 	default:
 		return errors.New("send channel full or blocked")
 	}
@@ -115,21 +115,21 @@ func (c *Client) Context() context.Context {
 	return c.ctx
 }
 
-func (c *Client) Start() {
+func (c *Client) Start(ctx context.Context) {
 	done := make(chan struct{})
 
 	go func() {
 		defer close(done)
-		c.readPump()
+		c.readPump(ctx)
 	}()
 
-	go c.writePump()
+	go c.writePump(ctx)
 
 	<-done
 	c.logger.Info("connection closed")
 }
 
-func (c *Client) readPump() {
+func (c *Client) readPump(ctx context.Context) {
 	defer func() {
 		c.logger.Info("client read pump stopped")
 		c.Close()
@@ -145,6 +145,8 @@ func (c *Client) readPump() {
 	for {
 		select {
 		case <-c.ctx.Done():
+			return
+		case <-ctx.Done():
 			return
 		default:
 			messageType, message, err := c.conn.ReadMessage()
@@ -166,33 +168,32 @@ func (c *Client) readPump() {
 			var msg domain.Message
 			if err := json.Unmarshal(message, &msg); err != nil {
 				c.logger.Error("Failed to unmarshal message", "error", err)
-				return
+				continue
 			}
 
-			ctx := context.Background()
 			response, err := c.router.Handle(ctx, &msg)
 			if err != nil {
 				c.logger.Error("Failed to handle message", "error", err)
-				return
+				continue
 			}
 
 			if response != nil {
 				respData, err := json.Marshal(response)
 				if err != nil {
 					c.logger.Error("Failed to marshal response", "error", err)
-					return
+					continue
 				}
 
 				if err := c.Send(ctx, respData); err != nil {
 					c.logger.Error("Failed to send response", "error", err)
-					return
+					continue
 				}
 			}
 		}
 	}
 }
 
-func (c *Client) writePump() {
+func (c *Client) writePump(ctx context.Context) {
 	defer func() {
 		c.logger.Debug("write pump stopped")
 	}()
@@ -204,7 +205,8 @@ func (c *Client) writePump() {
 		select {
 		case <-c.ctx.Done():
 			return
-
+		case <-ctx.Done():
+			return
 		case message, ok := <-c.sendChan:
 			c.conn.SetWriteDeadline(time.Now().Add(c.options.WriteTimeout))
 
