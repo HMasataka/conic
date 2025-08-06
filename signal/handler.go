@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/HMasataka/conic"
 	"github.com/HMasataka/conic/domain"
@@ -36,6 +37,7 @@ func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message
 		return nil, errors.New("connection not found")
 	}
 
+
 	socket := domain.NewClient(req.ClientID, conn)
 
 	if err := h.hub.Register(socket); err != nil {
@@ -54,9 +56,10 @@ func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message
 	}
 
 	response := &domain.Message{
-		ID:   xid.New().String(),
-		Type: domain.MessageTypeRegisterResponse,
-		Data: respData,
+		ID:        xid.New().String(),
+		Type:      domain.MessageTypeRegisterResponse,
+		Timestamp: time.Now(),
+		Data:      respData,
 	}
 
 	h.logger.Info("client registered", "client_id", req.ClientID)

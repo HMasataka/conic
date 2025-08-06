@@ -3,6 +3,7 @@ package conic
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/HMasataka/conic/domain"
 	"github.com/HMasataka/conic/logging"
@@ -92,9 +93,10 @@ func (h *SessionDescriptionHandler) Handle(ctx context.Context, msg *domain.Mess
 	}
 
 	response := &domain.Message{
-		ID:   xid.New().String(),
-		Type: domain.MessageTypeSDP,
-		Data: data,
+		ID:        xid.New().String(),
+		Type:      domain.MessageTypeSDP,
+		Timestamp: time.Now(),
+		Data:      data,
 	}
 
 	h.logger.Debug("message data", "data", string(msg.Data))

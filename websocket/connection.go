@@ -157,25 +157,35 @@ func (c *Connection) readPump(ctx context.Context) {
 
 			var msg domain.Message
 			if err := json.Unmarshal(message, &msg); err != nil {
-				c.logger.Error("Failed to unmarshal message", "error", err)
+				c.logger.Error("Failed to unmarshal message", "error", err, "raw_message", string(message))
 				continue
+			}
+
+			// Set timestamp if not present
+			if msg.Timestamp.IsZero() {
+				msg.Timestamp = time.Now()
 			}
 
 			response, err := c.router.Handle(ctx, &msg)
 			if err != nil {
-				c.logger.Error("Failed to handle message", "error", err)
+				c.logger.Error("Failed to handle message", "error", err, "message_type", msg.Type, "message_id", msg.ID)
 				continue
 			}
 
 			if response != nil {
+				// Ensure response has timestamp
+				if response.Timestamp.IsZero() {
+					response.Timestamp = time.Now()
+				}
+				
 				respData, err := json.Marshal(response)
 				if err != nil {
-					c.logger.Error("Failed to marshal response", "error", err)
+					c.logger.Error("Failed to marshal response", "error", err, "response_type", response.Type)
 					continue
 				}
 
 				if err := c.Send(ctx, respData); err != nil {
-					c.logger.Error("Failed to send response", "error", err)
+					c.logger.Error("Failed to send response", "error", err, "response_type", response.Type)
 					continue
 				}
 			}

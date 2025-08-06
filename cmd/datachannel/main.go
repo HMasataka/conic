@@ -191,7 +191,7 @@ func runAnswerMode(pc *conic.PeerConnection, logging *logging.Logger) {
 		log.Printf("📨 Data channel '%s' is open", dataChannel.Label())
 	})
 
-	log.Println("Waiting for offers... (Press Enter to exit)")
+	log.Println("Waiting for data channel to open... (Press Enter to exit)")
 	waitScanner := bufio.NewScanner(os.Stdin)
 	waitScanner.Scan()
 }
