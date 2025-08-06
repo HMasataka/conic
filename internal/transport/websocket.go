@@ -1,4 +1,4 @@
-package websocket
+package transport
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/HMasataka/conic/domain"
+	"github.com/HMasataka/conic/internal/protocol"
 	"github.com/HMasataka/conic/logging"
-	"github.com/HMasataka/conic/router"
 	ws "github.com/gorilla/websocket"
 )
 
@@ -37,7 +37,7 @@ type Connection struct {
 	ctx      context.Context
 	conn     *ws.Conn
 	cancel   context.CancelFunc
-	router   *router.Router
+	router   *protocol.Router
 	logger   *logging.Logger
 	options  ConnectionOptions
 	sendChan chan []byte
@@ -45,7 +45,7 @@ type Connection struct {
 	closed   bool
 }
 
-func NewConnection(conn *ws.Conn, router *router.Router, logger *logging.Logger, options ConnectionOptions) *Connection {
+func NewConnection(conn *ws.Conn, router *protocol.Router, logger *logging.Logger, options ConnectionOptions) *Connection {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &Connection{
@@ -177,7 +177,7 @@ func (c *Connection) readPump(ctx context.Context) {
 				if response.Timestamp.IsZero() {
 					response.Timestamp = time.Now()
 				}
-				
+
 				respData, err := json.Marshal(response)
 				if err != nil {
 					c.logger.Error("Failed to marshal response", "error", err, "response_type", response.Type)

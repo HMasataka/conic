@@ -1,4 +1,4 @@
-package conic
+package protocol
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/HMasataka/conic/domain"
+	webrtcinternal "github.com/HMasataka/conic/internal/webrtc"
 	"github.com/HMasataka/conic/logging"
 	"github.com/pion/webrtc/v4"
 	"github.com/rs/xid"
@@ -50,11 +51,11 @@ func (h *UnregisterResponseHandler) CanHandle(messageType domain.MessageType) bo
 }
 
 type SessionDescriptionHandler struct {
-	pc     *PeerConnection
+	pc     *webrtcinternal.PeerConnection
 	logger *logging.Logger
 }
 
-func NewSessionDescriptionHandler(pc *PeerConnection, logger *logging.Logger) *SessionDescriptionHandler {
+func NewSessionDescriptionHandler(pc *webrtcinternal.PeerConnection, logger *logging.Logger) *SessionDescriptionHandler {
 	return &SessionDescriptionHandler{
 		pc:     pc,
 		logger: logger,
@@ -110,11 +111,11 @@ func (h *SessionDescriptionHandler) CanHandle(messageType domain.MessageType) bo
 
 type CandidateHandler struct {
 	clientID string
-	pc       *PeerConnection
+	pc       *webrtcinternal.PeerConnection
 	logger   *logging.Logger
 }
 
-func NewCandidateHandler(pc *PeerConnection, logger *logging.Logger) *CandidateHandler {
+func NewCandidateHandler(pc *webrtcinternal.PeerConnection, logger *logging.Logger) *CandidateHandler {
 	return &CandidateHandler{
 		pc:     pc,
 		logger: logger,

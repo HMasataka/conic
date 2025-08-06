@@ -5,29 +5,29 @@ import (
 
 	"github.com/HMasataka/conic"
 	"github.com/HMasataka/conic/logging"
-	"github.com/HMasataka/conic/router"
-	"github.com/HMasataka/conic/websocket"
+	"github.com/HMasataka/conic/internal/protocol"
+	"github.com/HMasataka/conic/internal/transport"
 	ws "github.com/gorilla/websocket"
 )
 
 type ServerOptions struct {
-	websocket.ConnectionOptions
+	transport.ConnectionOptions
 }
 
 func DefaultServerOptions() ServerOptions {
 	return ServerOptions{
-		ConnectionOptions: websocket.DefaultConnectionOptions(),
+		ConnectionOptions: transport.DefaultConnectionOptions(),
 	}
 }
 
 type Server struct {
 	upgrader ws.Upgrader
-	router   *router.Router
+	router   *protocol.Router
 	logger   *logging.Logger
 	options  ServerOptions
 }
 
-func NewServer(router *router.Router, logger *logging.Logger, options ServerOptions) *Server {
+func NewServer(router *protocol.Router, logger *logging.Logger, options ServerOptions) *Server {
 	upgrader := ws.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -54,7 +54,7 @@ func (s *Server) Handle(w http.ResponseWriter, r *http.Request) {
 	s.logger.Info("websocket connection established")
 
 	ctx := conic.WithConnection(r.Context(), conn)
-	connection := websocket.NewConnection(conn, s.router, s.logger, s.options.ConnectionOptions)
+	connection := transport.NewConnection(conn, s.router, s.logger, s.options.ConnectionOptions)
 
 	connection.Start(ctx)
 }

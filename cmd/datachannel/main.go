@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/HMasataka/conic"
 	"github.com/HMasataka/conic/domain"
+	"github.com/HMasataka/conic/internal/protocol"
+	"github.com/HMasataka/conic/internal/transport"
+	webrtcinternal "github.com/HMasataka/conic/internal/webrtc"
 	"github.com/HMasataka/conic/logging"
 	"github.com/gorilla/websocket"
 	"github.com/pion/webrtc/v4"
@@ -49,17 +51,17 @@ func main() {
 	}
 	defer conn.Close()
 
-	pc, err := conic.NewPeerConnection(id, conic.DefaultPeerConnectionOptions(logger))
+	pc, err := webrtcinternal.NewPeerConnection(id, webrtcinternal.DefaultPeerConnectionOptions(logger))
 	if err != nil {
 		logger.Error("Failed to create peer connection", "error", err)
 		return
 	}
 
-	pc.OnICECandidate(conic.OnIceCandidate(conn, pc))
+	pc.OnICECandidate(webrtcinternal.OnIceCandidate(conn, pc))
 
-	router := conic.NewRouter(pc, logger)
+	router := protocol.NewPeerRouter(pc, logger)
 
-	client := conic.NewClient(conn, router, logger, conic.DefaultClientOptions(id))
+	client := transport.NewClient(conn, router, logger, transport.DefaultClientOptions(id))
 	go client.Start(context.Background())
 
 	logger.Info("Client started", "id", client.ID())
@@ -84,7 +86,7 @@ func main() {
 }
 
 // registerToServer sends registration message to the server
-func registerToServer(pc *conic.PeerConnection, client *conic.Client, logger *logging.Logger) error {
+func registerToServer(pc *webrtcinternal.PeerConnection, client *transport.Client, logger *logging.Logger) error {
 	regReq := domain.RegisterRequest{
 		ClientID: pc.ID(),
 	}
@@ -116,7 +118,7 @@ func registerToServer(pc *conic.PeerConnection, client *conic.Client, logger *lo
 	return nil
 }
 
-func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *logging.Logger) {
+func runOfferMode(pc *webrtcinternal.PeerConnection, client *transport.Client, logging *logging.Logger) {
 	logging.Info("Running in offer mode")
 
 	var targetID string
@@ -208,13 +210,13 @@ func runOfferMode(pc *conic.PeerConnection, client *conic.Client, logging *loggi
 	waitScanner.Scan()
 }
 
-func runAnswerMode(pc *conic.PeerConnection, logging *logging.Logger) {
+func runAnswerMode(pc *webrtcinternal.PeerConnection, logging *logging.Logger) {
 	logging.Info("Running in answer mode")
 
 	pc.OnDataChannel(func(dc *webrtc.DataChannel) {
 		log.Printf("📨 Data channel '%s' is open", dc.Label())
 
-		dataChannel := conic.NewDataChannel(dc, logging)
+		dataChannel := webrtcinternal.NewDataChannel(dc, logging)
 
 		dataChannel.OnMessage(func(data []byte) {
 			log.Printf("📩 Received: %s", string(data))

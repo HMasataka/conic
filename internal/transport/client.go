@@ -1,41 +1,40 @@
-package conic
+package transport
 
 import (
 	"context"
 
 	"github.com/HMasataka/conic/logging"
-	"github.com/HMasataka/conic/router"
-	"github.com/HMasataka/conic/websocket"
+	"github.com/HMasataka/conic/internal/protocol"
 	ws "github.com/gorilla/websocket"
 	"github.com/rs/xid"
 )
 
 type ClientOptions struct {
 	ID string
-	websocket.ConnectionOptions
+	ConnectionOptions
 }
 
 func DefaultClientOptions(id string) ClientOptions {
 	return ClientOptions{
 		ID:                id,
-		ConnectionOptions: websocket.DefaultConnectionOptions(),
+		ConnectionOptions: DefaultConnectionOptions(),
 	}
 }
 
 type Client struct {
 	id         string
-	connection *websocket.Connection
+	connection *Connection
 	logger     *logging.Logger
 }
 
-func NewClient(conn *ws.Conn, router *router.Router, logger *logging.Logger, options ClientOptions) *Client {
+func NewClient(conn *ws.Conn, router *protocol.Router, logger *logging.Logger, options ClientOptions) *Client {
 	id := options.ID
 	if id == "" {
 		id = xid.New().String()
 	}
 
 	clientLogger := logger.WithFields(map[string]any{"client_id": id})
-	connection := websocket.NewConnection(conn, router, clientLogger, options.ConnectionOptions)
+	connection := NewConnection(conn, router, clientLogger, options.ConnectionOptions)
 
 	return &Client{
 		id:         id,
