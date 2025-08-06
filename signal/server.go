@@ -42,7 +42,6 @@ type Server struct {
 	sendChan chan []byte
 	mutex    sync.RWMutex
 	closed   bool
-	wg       sync.WaitGroup
 }
 
 func NewServer(router *router.Router, logger *logging.Logger, options ServerOptions) *Server {
@@ -81,8 +80,6 @@ func (c *Server) Close() error {
 	c.cancel()
 
 	close(c.sendChan)
-
-	c.wg.Wait()
 
 	return nil
 }

@@ -46,7 +46,6 @@ type Client struct {
 	sendChan chan []byte
 	mutex    sync.RWMutex
 	closed   bool
-	wg       sync.WaitGroup
 }
 
 func NewClient(conn *websocket.Conn, router *router.Router, logger *logging.Logger, options ClientOptions) *Client {
@@ -109,8 +108,6 @@ func (c *Client) Close() error {
 		c.logger.Error("error closing websocket connection", "error", err)
 	}
 
-	c.wg.Wait()
-
 	return nil
 }
 
@@ -119,13 +116,20 @@ func (c *Client) Context() context.Context {
 }
 
 func (c *Client) Start() {
-	c.wg.Add(2)
-	go c.readPump()
-	c.writePump()
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		c.readPump()
+	}()
+
+	go c.writePump()
+
+	<-done
+	c.logger.Info("connection closed")
 }
 
 func (c *Client) readPump() {
-	defer c.wg.Done()
 	defer func() {
 		c.logger.Info("client read pump stopped")
 		c.Close()
@@ -189,7 +193,6 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	defer c.wg.Done()
 	defer func() {
 		c.logger.Debug("write pump stopped")
 	}()
