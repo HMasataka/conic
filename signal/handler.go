@@ -52,7 +52,7 @@ func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message
 
 	respData, err := json.Marshal(resp)
 	if err != nil {
-		return nil, errors.New("")
+		return nil, errors.New("failed to marshal register response: " + err.Error())
 	}
 
 	response := &domain.Message{

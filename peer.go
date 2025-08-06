@@ -121,11 +121,11 @@ func (p *PeerConnection) CreateOffer(options *webrtc.OfferOptions) (webrtc.Sessi
 func (p *PeerConnection) CreateAnswer(options *webrtc.AnswerOptions) (webrtc.SessionDescription, error) {
 	answer, err := p.pc.CreateAnswer(options)
 	if err != nil {
-		return webrtc.SessionDescription{}, errors.New("")
+		return webrtc.SessionDescription{}, errors.New("failed to create answer: " + err.Error())
 	}
 
 	if err := p.pc.SetLocalDescription(answer); err != nil {
-		return webrtc.SessionDescription{}, errors.New("")
+		return webrtc.SessionDescription{}, errors.New("failed to set local description: " + err.Error())
 	}
 
 	p.logger.Debug("created answer", "peer_id", p.id)
@@ -136,7 +136,7 @@ func (p *PeerConnection) CreateAnswer(options *webrtc.AnswerOptions) (webrtc.Ses
 // SetRemoteDescription sets the remote SDP
 func (p *PeerConnection) SetRemoteDescription(sdp webrtc.SessionDescription) error {
 	if err := p.pc.SetRemoteDescription(sdp); err != nil {
-		return errors.New("")
+		return errors.New("failed to set remote description: " + err.Error())
 	}
 
 	p.logger.Debug("set remote description", "peer_id", p.id, "type", sdp.Type)
@@ -159,7 +159,7 @@ func (p *PeerConnection) AddICECandidate(candidate webrtc.ICECandidateInit) erro
 	}
 
 	if err := p.pc.AddICECandidate(candidate); err != nil {
-		return errors.New("")
+		return errors.New("failed to add ICE candidate: " + err.Error())
 	}
 
 	p.logger.Debug("added ICE candidate", "peer_id", p.id)
@@ -171,7 +171,7 @@ func (p *PeerConnection) AddICECandidate(candidate webrtc.ICECandidateInit) erro
 func (p *PeerConnection) CreateDataChannel(label string, options *webrtc.DataChannelInit) (*DataChannel, error) {
 	dc, err := p.pc.CreateDataChannel(label, options)
 	if err != nil {
-		return nil, errors.New("")
+		return nil, errors.New("failed to create data channel: " + err.Error())
 	}
 
 	dataChannel := NewDataChannel(dc, p.logger)

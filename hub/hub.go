@@ -81,9 +81,9 @@ func (h *Hub) Register(client domain.Client) error {
 	case h.register <- client:
 		return nil
 	case <-h.ctx.Done():
-		return errors.New("")
+		return errors.New("hub context cancelled during registration")
 	default:
-		return errors.New("")
+		return errors.New("registration channel is full")
 	}
 }
 
@@ -92,9 +92,9 @@ func (h *Hub) Unregister(clientID string) error {
 	case h.unregister <- clientID:
 		return nil
 	case <-h.ctx.Done():
-		return errors.New("")
+		return errors.New("hub context cancelled during unregistration")
 	default:
-		return errors.New("")
+		return errors.New("unregistration channel is full")
 	}
 }
 
@@ -104,9 +104,9 @@ func (h *Hub) Broadcast(message []byte) error {
 		atomic.AddInt64(&h.messagesReceived, 1)
 		return nil
 	case <-h.ctx.Done():
-		return errors.New("")
+		return errors.New("hub context cancelled during broadcast")
 	default:
-		return errors.New("")
+		return errors.New("broadcast channel is full")
 	}
 }
 
@@ -116,9 +116,9 @@ func (h *Hub) SendTo(clientID string, message []byte) error {
 		atomic.AddInt64(&h.messagesReceived, 1)
 		return nil
 	case <-h.ctx.Done():
-		return errors.New("")
+		return errors.New("hub context cancelled during send")
 	default:
-		return errors.New("")
+		return errors.New("send channel is full")
 	}
 }
 
