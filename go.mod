@@ -7,6 +7,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/pion/webrtc/v4 v4.0.10
 	github.com/rs/xid v1.6.0
+	github.com/sytallax/prettylog v0.1.0
 )
 
 require (

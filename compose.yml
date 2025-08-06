@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  signal-server:
+    build: .
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    networks:
+      - conic-network
+
+networks:
+  conic-network:
+    driver: bridge
+

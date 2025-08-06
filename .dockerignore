@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/tmp
+
+# Documentation
+README.md
+docs/
+*.md
+
+# CI/CD
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker (but keep the main files for build context)
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Air (hot reload) files
+.air.toml
+tmp/
+
+# Claude specific
+.claude/
+CLAUDE.md
