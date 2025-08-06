@@ -49,16 +49,14 @@ func (h *UnregisterResponseHandler) CanHandle(messageType domain.MessageType) bo
 }
 
 type SessionDescriptionHandler struct {
-	clientID string
-	pc       *PeerConnection
-	logger   *logging.Logger
+	pc     *PeerConnection
+	logger *logging.Logger
 }
 
-func NewSessionDescriptionHandler(clientID string, pc *PeerConnection, logger *logging.Logger) *SessionDescriptionHandler {
+func NewSessionDescriptionHandler(pc *PeerConnection, logger *logging.Logger) *SessionDescriptionHandler {
 	return &SessionDescriptionHandler{
-		clientID: clientID,
-		pc:       pc,
-		logger:   logger,
+		pc:     pc,
+		logger: logger,
 	}
 }
 
@@ -85,7 +83,7 @@ func (h *SessionDescriptionHandler) Handle(ctx context.Context, msg *domain.Mess
 	}
 
 	data, err := json.Marshal(domain.SDPMessage{
-		FromID:             h.clientID,
+		FromID:             h.pc.ID(),
 		ToID:               sdpMsg.FromID,
 		SessionDescription: answer,
 	})

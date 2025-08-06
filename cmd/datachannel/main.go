@@ -57,7 +57,7 @@ func main() {
 
 	pc.OnICECandidate(conic.OnIceCandidate(conn, pc))
 
-	router := conic.NewRouter(id, pc, logger)
+	router := conic.NewRouter(pc, logger)
 
 	client := conic.NewClient(conn, router, logger, conic.DefaultClientOptions())
 	go client.Start(context.Background())
