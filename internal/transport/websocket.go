@@ -25,8 +25,8 @@ type ConnectionOptions struct {
 func DefaultConnectionOptions() ConnectionOptions {
 	return ConnectionOptions{
 		WriteTimeout:    10 * time.Second,
-		ReadTimeout:     60 * time.Second,
-		PingInterval:    30 * time.Second,
+		ReadTimeout:     90 * time.Second,
+		PingInterval:    15 * time.Second,
 		MaxMessageSize:  512 * 1024, // 512KB
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -242,6 +242,7 @@ func (c *Connection) writePump(ctx context.Context) {
 					c.logger.Error("websocket ping error", "error", err)
 					return
 				}
+				c.logger.Debug("sent ping")
 			}
 		} else {
 			select {

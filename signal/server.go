@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/HMasataka/conic"
-	"github.com/HMasataka/conic/logging"
 	"github.com/HMasataka/conic/internal/protocol"
 	"github.com/HMasataka/conic/internal/transport"
+	"github.com/HMasataka/conic/logging"
 	ws "github.com/gorilla/websocket"
 )
 

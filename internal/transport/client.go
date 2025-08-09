@@ -3,8 +3,8 @@ package transport
 import (
 	"context"
 
-	"github.com/HMasataka/conic/logging"
 	"github.com/HMasataka/conic/internal/protocol"
+	"github.com/HMasataka/conic/logging"
 	ws "github.com/gorilla/websocket"
 	"github.com/rs/xid"
 )

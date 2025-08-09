@@ -41,9 +41,13 @@ type PeerConnection struct {
 	pendingCandidates []webrtc.ICECandidateInit
 	candidatesMu      sync.Mutex
 
+	audioTracks   map[string]*AudioTrack
+	audioTracksMu sync.RWMutex
+
 	onICECandidate    func(*webrtc.ICECandidate) error
 	onDataChannel     func(*webrtc.DataChannel)
 	onConnectionState func(webrtc.PeerConnectionState)
+	onTrack           func(*webrtc.TrackRemote, *webrtc.RTPReceiver)
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -51,11 +55,27 @@ type PeerConnection struct {
 
 // NewPeerConnection creates a new peer connection
 func NewPeerConnection(id string, options PeerConnectionOptions) (*PeerConnection, error) {
+	// Create media engine with Opus support
+	mediaEngine, err := CreateOpusMediaEngine()
+	if err != nil {
+		return nil, errors.New("failed to create media engine: " + err.Error())
+	}
+
+	// Create settings engine with larger buffer sizes
+	settingEngine := webrtc.SettingEngine{}
+	settingEngine.SetReceiveMTU(8192) // Increase MTU for larger packets
+
+	// Create API with custom media and setting engines
+	api := webrtc.NewAPI(
+		webrtc.WithMediaEngine(mediaEngine),
+		webrtc.WithSettingEngine(settingEngine),
+	)
+
 	config := webrtc.Configuration{
 		ICEServers: options.ICEServers,
 	}
 
-	pc, err := webrtc.NewPeerConnection(config)
+	pc, err := api.NewPeerConnection(config)
 	if err != nil {
 		return nil, errors.New("failed to create peer connection: " + err.Error())
 	}
@@ -68,6 +88,7 @@ func NewPeerConnection(id string, options PeerConnectionOptions) (*PeerConnectio
 		logger:            options.Logger,
 		options:           options,
 		pendingCandidates: make([]webrtc.ICECandidateInit, 0),
+		audioTracks:       make(map[string]*AudioTrack),
 		ctx:               ctx,
 		cancel:            cancel,
 	}
@@ -95,6 +116,15 @@ func (p *PeerConnection) SetTargetID(id string) {
 // Close closes the peer connection
 func (p *PeerConnection) Close() error {
 	p.cancel()
+
+	// Close all audio tracks
+	p.audioTracksMu.Lock()
+	for _, track := range p.audioTracks {
+		track.Close()
+	}
+	p.audioTracks = nil
+	p.audioTracksMu.Unlock()
+
 	return p.pc.Close()
 }
 
@@ -181,6 +211,47 @@ func (p *PeerConnection) CreateDataChannel(label string, options *webrtc.DataCha
 	return dataChannel, nil
 }
 
+// AddAudioTrack adds an audio track to the peer connection
+func (p *PeerConnection) AddAudioTrack(track *AudioTrack) (*webrtc.RTPSender, error) {
+	sender, err := p.pc.AddTrack(track.LocalTrack())
+	if err != nil {
+		return nil, errors.New("failed to add audio track: " + err.Error())
+	}
+
+	p.audioTracksMu.Lock()
+	p.audioTracks[track.ID()] = track
+	p.audioTracksMu.Unlock()
+
+	p.logger.Info("added audio track", "peer_id", p.id, "track_id", track.ID())
+
+	return sender, nil
+}
+
+// RemoveAudioTrack removes an audio track from the peer connection
+func (p *PeerConnection) RemoveAudioTrack(trackID string) error {
+	p.audioTracksMu.Lock()
+	track, exists := p.audioTracks[trackID]
+	if !exists {
+		p.audioTracksMu.Unlock()
+		return errors.New("audio track not found")
+	}
+	delete(p.audioTracks, trackID)
+	p.audioTracksMu.Unlock()
+
+	track.Close()
+	p.logger.Info("removed audio track", "peer_id", p.id, "track_id", trackID)
+
+	return nil
+}
+
+// GetAudioTrack returns an audio track by ID
+func (p *PeerConnection) GetAudioTrack(trackID string) (*AudioTrack, bool) {
+	p.audioTracksMu.RLock()
+	defer p.audioTracksMu.RUnlock()
+	track, exists := p.audioTracks[trackID]
+	return track, exists
+}
+
 // OnICECandidate sets the ICE candidate handler
 func (p *PeerConnection) OnICECandidate(handler func(*webrtc.ICECandidate) error) {
 	p.onICECandidate = handler
@@ -194,6 +265,11 @@ func (p *PeerConnection) OnDataChannel(handler func(*webrtc.DataChannel)) {
 // OnConnectionStateChange sets the connection state change handler
 func (p *PeerConnection) OnConnectionStateChange(handler func(webrtc.PeerConnectionState)) {
 	p.onConnectionState = handler
+}
+
+// OnTrack sets the track handler for incoming media
+func (p *PeerConnection) OnTrack(handler func(*webrtc.TrackRemote, *webrtc.RTPReceiver)) {
+	p.onTrack = handler
 }
 
 // GetStats returns peer connection statistics
@@ -251,6 +327,42 @@ func (p *PeerConnection) setupEventHandlers() {
 	// Signaling state handler
 	p.pc.OnSignalingStateChange(func(state webrtc.SignalingState) {
 		p.logger.Debug("signaling state changed", "peer_id", p.id, "state", state.String())
+	})
+
+	// Track handler for incoming audio/video
+	p.pc.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {
+		p.logger.Info("track received",
+			"peer_id", p.id,
+			"track_id", track.ID(),
+			"kind", track.Kind().String(),
+			"codec", track.Codec().MimeType,
+		)
+
+		if track.Kind() == webrtc.RTPCodecTypeAudio {
+			// Create audio track wrapper
+			audioTrack, err := NewAudioTrack(track.ID(), track.Codec().RTPCodecCapability)
+			if err != nil {
+				p.logger.Error("failed to create audio track", "error", err)
+				return
+			}
+
+			audioTrack.SetRemoteTrack(track)
+
+			p.audioTracksMu.Lock()
+			p.audioTracks[track.ID()] = audioTrack
+			p.audioTracksMu.Unlock()
+
+			// Start reading samples in background
+			go func() {
+				if err := audioTrack.ReadSamples(p.ctx); err != nil {
+					p.logger.Error("error reading audio samples", "error", err)
+				}
+			}()
+		}
+
+		if p.onTrack != nil {
+			p.onTrack(track, receiver)
+		}
 	})
 }
 

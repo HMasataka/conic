@@ -37,7 +37,6 @@ func (h *RegisterRequestHandler) Handle(ctx context.Context, msg *domain.Message
 		return nil, errors.New("connection not found")
 	}
 
-
 	socket := domain.NewClient(req.ClientID, conn)
 
 	if err := h.hub.Register(socket); err != nil {
