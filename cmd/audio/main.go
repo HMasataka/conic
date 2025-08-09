@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/HMasataka/conic/domain"
+	"github.com/HMasataka/conic/internal/audio"
 	"github.com/HMasataka/conic/internal/protocol"
 	"github.com/HMasataka/conic/internal/transport"
 	webrtcinternal "github.com/HMasataka/conic/internal/webrtc"
@@ -25,8 +26,9 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "localhost:3000", "http service address")
-	role = flag.String("role", "offer", "role: offer, answer")
+	addr    = flag.String("addr", "localhost:3000", "http service address")
+	role    = flag.String("role", "offer", "role: offer, answer")
+	wavFile = flag.String("wav", "", "WAV file to play (optional, uses sine wave if not specified)")
 )
 
 func main() {
@@ -203,52 +205,14 @@ func runOfferMode(pc *webrtcinternal.PeerConnection, client *transport.Client, l
 		log.Fatal("send message:", err)
 	}
 
-	// Start sending audio samples (sine wave for testing)
-	go func() {
-		time.Sleep(3 * time.Second) // Wait for connection to stabilize
-		logger.Info("Starting audio transmission")
-
-		sampleRate := uint32(48000)
-		channelCount := uint16(2)
-		frameSize := uint32(960) // 20ms at 48kHz
-		frequency := 440.0       // A4 note
-
-		ticker := time.NewTicker(20 * time.Millisecond)
-		defer ticker.Stop()
-
-		sampleCount := uint32(0)
-
-		for range ticker.C {
-			// Generate sine wave samples
-			samples := make([]int16, frameSize*uint32(channelCount))
-			for i := uint32(0); i < frameSize; i++ {
-				t := float64(sampleCount+i) / float64(sampleRate)
-				value := int16(math.Sin(2*math.Pi*frequency*t) * 32767 * 0.3)
-
-				// Stereo: same value for both channels
-				samples[i*uint32(channelCount)] = value
-				samples[i*uint32(channelCount)+1] = value
-			}
-
-			// Convert to bytes
-			data := make([]byte, len(samples)*2)
-			for i, sample := range samples {
-				data[i*2] = byte(sample)
-				data[i*2+1] = byte(sample >> 8)
-			}
-
-			sample := &media.Sample{
-				Data:     data,
-				Duration: 20 * time.Millisecond,
-			}
-
-			if err := audioTrack.WriteSample(sample); err != nil {
-				logger.Error("Failed to write audio sample", "error", err)
-			}
-
-			sampleCount += frameSize
-		}
-	}()
+	// Start sending audio samples
+	if *wavFile != "" {
+		// Play WAV file
+		go playWAVFile(*wavFile, audioTrack, logger)
+	} else {
+		// Generate sine wave
+		go playSineWave(audioTrack, logger)
+	}
 
 	log.Println("Audio transmission started... Press Enter to display stats or 'q' to quit")
 
@@ -341,5 +305,108 @@ func runAnswerMode(pc *webrtcinternal.PeerConnection, logger *logging.Logger) {
 		// Note: In a real implementation, you would iterate through received tracks
 		fmt.Printf("Waiting for audio tracks...\n")
 		fmt.Printf("============================\n\n")
+	}
+}
+
+func playSineWave(audioTrack *webrtcinternal.AudioTrack, logger *logging.Logger) {
+	time.Sleep(3 * time.Second) // Wait for connection to stabilize
+	logger.Info("Starting sine wave audio transmission")
+
+	sampleRate := uint32(48000)
+	channelCount := uint16(2)
+	frameSize := uint32(960) // 20ms at 48kHz
+	frequency := 440.0       // A4 note
+
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+
+	sampleCount := uint32(0)
+
+	for range ticker.C {
+		// Generate sine wave samples
+		samples := make([]int16, frameSize*uint32(channelCount))
+		for i := uint32(0); i < frameSize; i++ {
+			t := float64(sampleCount+i) / float64(sampleRate)
+			value := int16(math.Sin(2*math.Pi*frequency*t) * 32767 * 0.3)
+
+			// Stereo: same value for both channels
+			samples[i*uint32(channelCount)] = value
+			samples[i*uint32(channelCount)+1] = value
+		}
+
+		// Convert to bytes
+		data := make([]byte, len(samples)*2)
+		for i, sample := range samples {
+			data[i*2] = byte(sample)
+			data[i*2+1] = byte(sample >> 8)
+		}
+
+		sample := &media.Sample{
+			Data:     data,
+			Duration: 20 * time.Millisecond,
+		}
+
+		if err := audioTrack.WriteSample(sample); err != nil {
+			logger.Error("Failed to write audio sample", "error", err)
+		}
+
+		sampleCount += frameSize
+	}
+}
+
+func playWAVFile(filename string, audioTrack *webrtcinternal.AudioTrack, logger *logging.Logger) {
+	time.Sleep(3 * time.Second) // Wait for connection to stabilize
+	logger.Info("Starting WAV file playback", "file", filename)
+
+	wavReader, err := audio.NewWAVReader(filename)
+	if err != nil {
+		logger.Error("Failed to open WAV file", "error", err)
+		return
+	}
+	defer wavReader.Close()
+
+	logger.Info("WAV file info",
+		"sample_rate", wavReader.SampleRate(),
+		"channels", wavReader.NumChannels(),
+	)
+
+	// Validate sample rate for Opus
+	if wavReader.SampleRate() != 48000 {
+		logger.Warn("WAV file sample rate is not 48kHz, audio may sound distorted")
+	}
+
+	frameSize := 960 // 20ms at 48kHz
+	ticker := time.NewTicker(20 * time.Millisecond)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Read samples from WAV file
+		samples, err := wavReader.ReadSamples(frameSize)
+		if err != nil {
+			if err.Error() == "EOF" {
+				// Loop back to beginning
+				logger.Info("Reached end of WAV file, looping back")
+				wavReader.Reset()
+				continue
+			}
+			logger.Error("Failed to read WAV samples", "error", err)
+			return
+		}
+
+		// Convert to bytes
+		data := make([]byte, len(samples)*2)
+		for i, sample := range samples {
+			data[i*2] = byte(sample)
+			data[i*2+1] = byte(sample >> 8)
+		}
+
+		sample := &media.Sample{
+			Data:     data,
+			Duration: 20 * time.Millisecond,
+		}
+
+		if err := audioTrack.WriteSample(sample); err != nil {
+			logger.Error("Failed to write audio sample", "error", err)
+		}
 	}
 }

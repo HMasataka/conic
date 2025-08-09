@@ -33,6 +33,10 @@ tasks:
     desc: Run datachannel demo
     cmd: go run cmd/datachannel/main.go {{.CLI_ARGS}}
 
+  generate-audio:
+    desc: Generate sample WAV file for testing
+    cmd: go run cmd/generate-audio/main.go {{.CLI_ARGS}}
+
   build:
     desc: Build all applications
     cmd: go build ./...

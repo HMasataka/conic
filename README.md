@@ -32,6 +32,12 @@ go mod tidy
 
 ## 使用方法
 
+### サンプル作成
+
+```bash
+task generate-audio
+```
+
 ### P2P通信デモ
 
 完全なWebRTCピアツーピア通信を体験できます：
