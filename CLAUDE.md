@@ -14,6 +14,10 @@ Conic is a Go-based WebRTC signaling server that facilitates real-time peer-to-p
 - **Run P2P demo**: `task p2p` or `go run cmd/p2p/main.go`
 - **Run P2P as offer side**: `task p2p-offer` or `go run cmd/p2p/main.go -role=offer`
 - **Run P2P as answer side**: `task p2p-answer` or `go run cmd/p2p/main.go -role=answer`
+- **Run audio demo (Opus)**: `task audio` or `go run cmd/audio/main.go`
+- **Run video demo (VP8)**: `task video` or `go run cmd/video/main.go`
+- **Run video as offer side**: `task video-offer` or `go run cmd/video/main.go -role=offer`
+- **Run video as answer side**: `task video-answer` or `go run cmd/video/main.go -role=answer`
 - **View available tasks**: `task --list` or `task`
 - **Build all**: `task build`
 - **Run tests**: `task test`
@@ -56,6 +60,8 @@ The project follows a domain-driven design with clean interfaces and modular pac
 5. **WebRTC Wrappers**
    - `peer.go` - PeerConnection wrapper with statistics, ICE candidate queuing, and error handling
    - `datachannel.go` - DataChannel wrapper with statistics, event handlers, and thread-safe operations
+   - `audiotrack.go` - AudioTrack wrapper for Opus codec support and audio streaming
+   - `videotrack.go` - VideoTrack wrapper for VP8 codec support and video streaming
 
 6. **P2P Implementation** (`p2p.go`) - High-level P2P connection management
    - Handles complete WebRTC handshake workflow
