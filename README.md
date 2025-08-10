@@ -19,17 +19,6 @@ WebSocket接続を使用したリアルタイムピアツーピア通信を促�
 - Go 1.24.5 以降
 - 依存関係ダウンロード用のインターネット接続
 
-## インストール
-
-```bash
-# リポジトリをクローン
-git clone https://github.com/HMasataka/conic.git
-cd conic
-
-# 依存関係をインストール
-go mod tidy
-```
-
 ## 使用方法
 
 ### サンプル作成
@@ -61,11 +50,11 @@ P2P通信デモの使い方：
 
 1. **サーバー起動**: まずシグナリングサーバーを起動
 
-   ```bash
-   task server
-   ```
+```bash
+task signal
+```
 
-2. **2つのクライアントを起動**: 別々のターミナルで
+1. **2つのクライアントを起動**: 別々のターミナルで
 
 ```bash
 # ターミナル1: オファー側
@@ -75,11 +64,9 @@ go run cmd/datachannel/main.go
 go run cmd/datachannel/main.go -role=answer
 ```
 
-3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると  
-   自動的にWebRTCハンドシェイクが開始されます
+1. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると自動的にWebRTCハンドシェイクが開始されます
 
-4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由での  
-   リアルタイム通信が可能になります
+1. **リアルタイム通信**: 接続が確立されるとデータチャネル経由でのリアルタイム通信が可能になります
 
 #### P2Pデモの特徴
 
@@ -450,6 +437,14 @@ task dev-server
 ├── context.go             # コンテキストユーティリティ
 ├── go.mod                 # Goモジュール定義
 └── Taskfile.yml           # タスクランナー設定
+```
+
+## Tips
+
+ffmpegを使用して動画ファイルを変換するには、以下のコマンドを使用します：
+
+```bash
+ffmpeg -f rawvideo -vcodec rawvideo -s 640x480 -pix_fmt yuv420p -i bounce.yuv -c:v libx264 -pix_fmt yuv420p output.mp4
 ```
 
 ## 参考文献

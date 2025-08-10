@@ -15,6 +15,7 @@ import (
 	"github.com/HMasataka/conic/domain"
 	"github.com/HMasataka/conic/internal/protocol"
 	"github.com/HMasataka/conic/internal/transport"
+	"github.com/HMasataka/conic/internal/video"
 	webrtcinternal "github.com/HMasataka/conic/internal/webrtc"
 	"github.com/HMasataka/conic/logging"
 	"github.com/gorilla/websocket"
@@ -24,8 +25,9 @@ import (
 )
 
 var (
-	addr = flag.String("addr", "localhost:3000", "http service address")
-	role = flag.String("role", "offer", "role: offer, answer")
+	addr     = flag.String("addr", "localhost:3000", "http service address")
+	role     = flag.String("role", "offer", "role: offer, answer")
+	yuvFile  = flag.String("yuv", "", "YUV file to play (optional, uses test pattern if not specified)")
 )
 
 func main() {
@@ -202,8 +204,14 @@ func runOfferMode(pc *webrtcinternal.PeerConnection, client *transport.Client, l
 		log.Fatal("send message:", err)
 	}
 
-	// Start sending video frames (test pattern)
-	go generateTestPattern(videoTrack, logger)
+	// Start sending video frames
+	if *yuvFile != "" {
+		// Play YUV file
+		go playYUVFile(*yuvFile, videoTrack, logger)
+	} else {
+		// Generate test pattern
+		go generateTestPattern(videoTrack, logger)
+	}
 
 	log.Println("Video transmission started... Press Enter to display stats or 'q' to quit")
 
@@ -338,5 +346,52 @@ func generateTestPattern(videoTrack *webrtcinternal.VideoTrack, logger *logging.
 		}
 
 		frameCounter++
+	}
+}
+
+func playYUVFile(filename string, videoTrack *webrtcinternal.VideoTrack, logger *logging.Logger) {
+	time.Sleep(3 * time.Second) // Wait for connection to stabilize
+	logger.Info("Starting YUV file playback", "file", filename)
+
+	yuvReader, err := video.NewYUVReader(filename)
+	if err != nil {
+		logger.Error("Failed to open YUV file", "error", err)
+		return
+	}
+	defer yuvReader.Close()
+
+	logger.Info("YUV file info",
+		"width", yuvReader.Width(),
+		"height", yuvReader.Height(),
+		"fps", yuvReader.FrameRate(),
+		"frames", yuvReader.FrameCount(),
+	)
+
+	frameDuration := time.Second / time.Duration(yuvReader.FrameRate())
+	ticker := time.NewTicker(frameDuration)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Read frame from YUV file
+		frameData, err := yuvReader.ReadFrame()
+		if err != nil {
+			if err.Error() == "EOF" {
+				// Loop back to beginning
+				logger.Info("Reached end of YUV file, looping back")
+				yuvReader.Reset()
+				continue
+			}
+			logger.Error("Failed to read YUV frame", "error", err)
+			return
+		}
+
+		sample := &media.Sample{
+			Data:     frameData,
+			Duration: frameDuration,
+		}
+
+		if err := videoTrack.WriteSample(sample); err != nil {
+			logger.Error("Failed to write video sample", "error", err)
+		}
 	}
 }
