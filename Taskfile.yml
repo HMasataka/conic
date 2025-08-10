@@ -29,6 +29,18 @@ tasks:
     desc: Run audio demo as answer side
     cmd: go run cmd/audio/main.go -role=answer
 
+  video:
+    desc: Run video demo with VP8 codec
+    cmd: go run cmd/video/main.go {{.CLI_ARGS}}
+
+  video-offer:
+    desc: Run video demo as offer side
+    cmd: go run cmd/video/main.go -role=offer
+
+  video-answer:
+    desc: Run video demo as answer side
+    cmd: go run cmd/video/main.go -role=answer
+
   datachannel:
     desc: Run datachannel demo
     cmd: go run cmd/datachannel/main.go {{.CLI_ARGS}}
