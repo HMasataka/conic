@@ -17,6 +17,26 @@ tasks:
     desc: Run P2P demo client as answer side
     cmd: go run cmd/p2p/main.go -role=answer
 
+  audio:
+    desc: Run audio demo with Opus codec
+    cmd: go run cmd/audio/main.go {{.CLI_ARGS}}
+
+  audio-offer:
+    desc: Run audio demo as offer side
+    cmd: go run cmd/audio/main.go -role=offer
+
+  audio-answer:
+    desc: Run audio demo as answer side
+    cmd: go run cmd/audio/main.go -role=answer
+
+  datachannel:
+    desc: Run datachannel demo
+    cmd: go run cmd/datachannel/main.go {{.CLI_ARGS}}
+
+  generate-audio:
+    desc: Generate sample WAV file for testing
+    cmd: go run cmd/generate-audio/main.go {{.CLI_ARGS}}
+
   build:
     desc: Build all applications
     cmd: go build ./...
