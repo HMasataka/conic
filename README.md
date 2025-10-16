@@ -38,42 +38,38 @@ go mod tidy
 task generate-audio
 ```
 
-### P2P通信デモ
+### データチャネルP2P通信デモ
 
 完全なWebRTCピアツーピア通信を体験できます：
 
 ```bash
-# インタラクティブP2Pクライアントを起動
+# インタラクティブなP2Pクライアントを起動
 task datachannel
 
 # オファー側として起動
-task datachannel-offer
-# または
-task datachannel -- -role=offer
+task datachannel -role=offer
 
 # アンサー側として起動
-task datachannel-answer
-# または
-task datachannel -- -role=answer
+task datachannel -role=answer
 ```
 
-P2P通信デモの使い方：
+#### デモの使い方
 
 1. **サーバー起動**: まずシグナリングサーバーを起動
 
    ```bash
-   task server
+   task signal
    ```
 
 2. **2つのクライアントを起動**: 別々のターミナルで
 
-```bash
-# ターミナル1: オファー側
-go run cmd/datachannel/main.go
+   ```bash
+   # ターミナル1: オファー側
+   task datachannel -role=offer
 
-# ターミナル2: アンサー側
-go run cmd/datachannel/main.go -role=answer
-```
+   # ターミナル2: アンサー側
+   task datachannel -role=answer
+   ```
 
 3. **P2P接続の確立**: オファー側でターゲットのピアIDを入力すると  
    自動的にWebRTCハンドシェイクが開始されます
@@ -81,13 +77,7 @@ go run cmd/datachannel/main.go -role=answer
 4. **リアルタイム通信**: 接続が確立されるとデータチャネル経由での  
    リアルタイム通信が可能になります
 
-#### P2Pデモの特徴
-
-```bash
-task datachannel
-```
-
-利用可能なコマンド：
+#### 利用可能なコマンド
 
 - `offer <peer_id>` - 指定したピアにWebRTCオファーを作成・送信
 - `channel <label>` - 新しいデータチャネルを作成
@@ -95,19 +85,33 @@ task datachannel
 - `list` - アクティブなデータチャネルを一覧表示
 - `quit` - 終了
 
+### オーディオ・ビデオストリーミングデモ
+
+オーディオおよびビデオストリーミングのデモも利用可能です：
+
+```bash
+# オーディオデモ（Opusコーデック）
+task audio-offer    # オファー側
+task audio-answer   # アンサー側
+
+# ビデオデモ（VP8コーデック）
+task video-offer    # オファー側
+task video-answer   # アンサー側
+```
+
 ## クイックスタート
 
 P2P通信を素早く体験するには：
 
 ```bash
-# ターミナル1: サーバー起動
+# ターミナル1: シグナリングサーバー起動
 task signal
 
 # ターミナル2: オファー側クライアント起動
-task datachannel-offer
+task datachannel -role=offer
 
 # ターミナル3: アンサー側クライアント起動
-task datachannel-answer
+task datachannel -role=answer
 ```
 
 1. オファー側でアンサー側のピアIDを入力
@@ -197,11 +201,10 @@ task datachannel-answer
 - **Connection Tracking**: 接続統計と管理
 - **Concurrent Processing**: Goチャンネルを使用した並行処理
 
-#### Signal Package (`signal/`)
+#### Audio Package (`internal/audio/`)
 
-- **WebSocket Server**: WebSocket接続とアップグレード処理
-- **P2P管理**: 完全なWebRTCハンドシェイクワークフロー
-- **Data Channel Management**: データチャネルとピア接続管理
+- **WAV Format**: WAVファイル形式の処理
+- **Sample Generation**: テスト用サンプルオーディオの生成
 
 #### Logging (`logging/`)
 
@@ -398,16 +401,27 @@ graph TB
 ### 利用可能なコマンド
 
 ```bash
-# シグナルアプリを起動
+# シグナリングサーバーを起動
 task signal
 
-# 利用可能なすべてのタスクを表示
-task --list
+# データチャネルデモを起動
+task datachannel
+
+# オーディオデモを起動
+task audio-offer      # オファー側
+task audio-answer     # アンサー側
+
+# ビデオデモを起動
+task video-offer      # オファー側
+task video-answer     # アンサー側
+
+# WAVサンプルを生成
+task generate-audio
 
 # プロジェクトをビルド
 task build
 
-# テストを実行（利用可能な場合）
+# テストを実行
 task test
 
 # コードをフォーマット
@@ -422,6 +436,9 @@ task tidy
 # ビルド成果物をクリーンアップ
 task clean
 
+# 利用可能なすべてのタスクを表示
+task --list
+
 # 開発ツールをインストール
 task install-tools
 
@@ -433,23 +450,45 @@ task dev-server
 
 ```bash
 /
-├── cmd/                    # アプリケーション
-│   ├── signal/main.go      # シグナリングサーバーアプリ
-│   └── datachannel/main.go # P2Pデータチャネルデモ
-├── internal/               # 内部パッケージ（外部から非公開）
-│   ├── webrtc/            # WebRTC関連コンポーネント
-│   ├── transport/         # 通信・トランスポート層
-│   └── protocol/          # プロトコル・メッセージ処理
-├── domain/                # コアインターフェース・ドメインモデル
-├── hub/                   # ハブ実装
-├── signal/                # シグナリングサーバー
-├── registry/              # ハンドラーレジストリ
-├── logging/               # ログユーティリティ
-│   ├── logger.go         # 構造化ログ実装
-│   └── context.go        # ログコンテキスト
-├── context.go             # コンテキストユーティリティ
-├── go.mod                 # Goモジュール定義
-└── Taskfile.yml           # タスクランナー設定
+├── cmd/                          # コマンドラインアプリケーション
+│   ├── signal/main.go           # シグナリングサーバー
+│   ├── datachannel/main.go      # データチャネルP2Pデモ
+│   ├── audio/main.go            # オーディオストリーミングデモ
+│   ├── video/main.go            # ビデオストリーミングデモ
+│   └── generate-audio/main.go   # WAVサンプル生成ユーティリティ
+├── internal/                     # 内部パッケージ（外部から非公開）
+│   ├── protocol/                # メッセージルーティング・HTTP処理
+│   │   ├── router.go            # HTTPルーター・WebSocket升級
+│   │   └── handler.go           # メッセージハンドラー
+│   ├── transport/               # WebSocket通信層
+│   │   ├── websocket.go         # WebSocketサーバー
+│   │   └── client.go            # クライアント表現・メッセージルーティング
+│   ├── webrtc/                  # WebRTCラッパーコンポーネント
+│   │   ├── peer.go              # PeerConnection ラッパー
+│   │   ├── datachannel.go       # DataChannel ラッパー
+│   │   ├── audiotrack.go        # AudioTrack ラッパー
+│   │   ├── videotrack.go        # VideoTrack ラッパー
+│   │   ├── candidate.go         # ICE候補処理
+│   │   └── errors.go            # WebRTCエラー定義
+│   └── audio/                   # オーディオユーティリティ
+│       └── wav.go               # WAVフォーマット処理
+├── domain/                       # コアインターフェース・ドメインモデル
+│   ├── client.go                # クライアントインターフェース
+│   ├── data.go                  # メッセージ型定義
+│   └── hub.go                   # ハブインターフェース
+├── hub/                         # ハブ実装
+│   └── hub.go                   # 中央メッセージルーター
+├── registry/                    # WebRTCレジストレーション処理
+│   └── handler.go               # Offer/Answer レジストレーション
+├── logging/                     # ログユーティリティ
+│   ├── logger.go                # 構造化ログ実装
+│   └── context.go               # ログコンテキスト
+├── context.go                   # グローバルコンテキストユーティリティ
+├── go.mod                       # Goモジュール定義
+├── Taskfile.yml                 # タスクランナー設定
+└── docs/                        # ドキュメント
+    ├── webrtc-terminology.md    # WebRTC用語解説
+    └── ice-explanation.md       # ICEプロトコル解説
 ```
 
 ## 参考文献
