@@ -11,13 +11,16 @@ Conic is a Go-based WebRTC signaling server that facilitates real-time peer-to-p
 ### Task Runner Commands (using Taskfile)
 
 - **Run signal server**: `task signal` or `go run cmd/signal/main.go`
-- **Run P2P demo**: `task p2p` or `go run cmd/p2p/main.go`
-- **Run P2P as offer side**: `task p2p-offer` or `go run cmd/p2p/main.go -role=offer`
-- **Run P2P as answer side**: `task p2p-answer` or `go run cmd/p2p/main.go -role=answer`
+- **Run datachannel demo**: `task datachannel` or `go run cmd/datachannel/main.go`
+- **Run datachannel as offer side**: `task datachannel -role=offer`
+- **Run datachannel as answer side**: `task datachannel -role=answer`
 - **Run audio demo (Opus)**: `task audio` or `go run cmd/audio/main.go`
+- **Run audio as offer side**: `task audio-offer` or `go run cmd/audio/main.go -role=offer`
+- **Run audio as answer side**: `task audio-answer` or `go run cmd/audio/main.go -role=answer`
 - **Run video demo (VP8)**: `task video` or `go run cmd/video/main.go`
 - **Run video as offer side**: `task video-offer` or `go run cmd/video/main.go -role=offer`
 - **Run video as answer side**: `task video-answer` or `go run cmd/video/main.go -role=answer`
+- **Generate sample audio**: `task generate-audio`
 - **View available tasks**: `task --list` or `task`
 - **Build all**: `task build`
 - **Run tests**: `task test`
@@ -27,8 +30,6 @@ Conic is a Go-based WebRTC signaling server that facilitates real-time peer-to-p
 - **Clean build artifacts**: `task clean`
 - **Install development tools**: `task install-tools` (installs air)
 - **Dev server with hot reload**: `task dev-server` (requires air)
-
-Note: cmd/p2p/main.go is missing according to git status. Tests don't currently exist in the codebase.
 
 ## Architecture Overview
 
@@ -48,31 +49,32 @@ The project follows a domain-driven design with clean interfaces and modular pac
    - Tracks client connections and statistics
    - Uses channels for concurrent operation
 
-3. **Signal Package** (`signal/`) - WebSocket server implementation
-   - `server.go` - WebSocket server with connection upgrading
-   - `client.go` - Server-side client representation
+3. **Protocol Package** (`internal/protocol/`) - Message routing and handling
+   - `router.go` - HTTP routing setup with WebSocket upgrade
    - `handler.go` - Message type handlers (register, unregister, SDP, candidate, data_channel)
-   - `router.go` - HTTP routing setup
 
-4. **Registry Package** (`registry/`) - WebRTC registration handling
-   - Manages WebRTC offer/answer registration flow
+4. **Transport Package** (`internal/transport/`) - WebSocket communication layer
+   - `websocket.go` - WebSocket server with connection management
+   - `client.go` - Server-side client representation and message routing
 
-5. **WebRTC Wrappers**
+5. **WebRTC Package** (`internal/webrtc/`) - WebRTC wrapper components
    - `peer.go` - PeerConnection wrapper with statistics, ICE candidate queuing, and error handling
    - `datachannel.go` - DataChannel wrapper with statistics, event handlers, and thread-safe operations
    - `audiotrack.go` - AudioTrack wrapper for Opus codec support and audio streaming
    - `videotrack.go` - VideoTrack wrapper for VP8 codec support and video streaming
+   - `candidate.go` - ICE candidate handling
+   - `errors.go` - WebRTC-specific error types
 
-6. **P2P Implementation** (`p2p.go`) - High-level P2P connection management
-   - Handles complete WebRTC handshake workflow
-   - Manages data channels and peer connections
+6. **Registry Package** (`registry/`) - WebRTC registration handling
+   - `handler.go` - Manages WebRTC offer/answer registration flow
 
-7. **Logging Package** (`logging/`) - Structured logging
+7. **Audio Package** (`internal/audio/`) - Audio utilities
+   - `wav.go` - WAV file format handling
+
+8. **Logging Package** (`logging/`) - Structured logging
    - Uses Go's `slog` package
    - Context-aware logging
    - Configurable levels and formats (JSON/text)
-
-8. **Error Handling** (`errors.go`) - Custom error types and definitions
 
 ### Message Types
 
@@ -94,42 +96,53 @@ The project follows a domain-driven design with clean interfaces and modular pac
 
 ```
 /
-├── cmd/
-│   ├── signal/main.go    # Signal server application
-│   └── p2p/              # P2P demo client (missing per git status)
-├── domain/               # Core interfaces and types
-│   ├── client.go         # Client interface
-│   ├── data.go          # Message types
-│   └── hub.go           # Hub interface
-├── hub/                 # Hub implementation
-│   └── hub.go
-├── signal/              # WebSocket server implementation
-│   ├── server.go        # WebSocket server
-│   ├── client.go        # Server-side client
-│   ├── handler.go       # Message handlers
-│   └── router.go        # HTTP routing
-├── registry/            # WebRTC registration
-│   └── handler.go
-├── logging/             # Structured logging
+├── cmd/                          # Command-line applications
+│   ├── signal/main.go           # Signal server application
+│   ├── datachannel/main.go      # Data channel P2P demo
+│   ├── audio/main.go            # Audio streaming demo (Opus)
+│   ├── video/main.go            # Video streaming demo (VP8)
+│   └── generate-audio/main.go   # WAV audio file generator
+├── domain/                       # Core interfaces and types
+│   ├── client.go                # Client interface
+│   ├── data.go                  # Message types
+│   └── hub.go                   # Hub interface
+├── hub/                         # Hub implementation
+│   └── hub.go                   # Central message router
+├── internal/
+│   ├── protocol/                # Message routing and HTTP setup
+│   │   ├── router.go            # HTTP router with WebSocket upgrade
+│   │   └── handler.go           # Message type handlers
+│   ├── transport/               # WebSocket communication layer
+│   │   ├── websocket.go         # WebSocket server
+│   │   └── client.go            # Client representation
+│   ├── webrtc/                  # WebRTC wrapper components
+│   │   ├── peer.go              # PeerConnection wrapper
+│   │   ├── datachannel.go       # DataChannel wrapper
+│   │   ├── audiotrack.go        # AudioTrack wrapper
+│   │   ├── videotrack.go        # VideoTrack wrapper
+│   │   ├── candidate.go         # ICE candidate handling
+│   │   └── errors.go            # WebRTC errors
+│   └── audio/                   # Audio utilities
+│       └── wav.go               # WAV format handling
+├── registry/                    # WebRTC registration
+│   └── handler.go               # Offer/answer registration
+├── logging/                     # Structured logging
 │   ├── logger.go
 │   └── context.go
-├── peer.go             # PeerConnection wrapper
-├── datachannel.go      # DataChannel wrapper
-├── p2p.go             # P2P connection management
-├── errors.go          # Error definitions
-└── docs/              # Documentation
-    ├── webrtc-terminology.md
-    └── ice-explanation.md
+├── docs/                        # Documentation
+│   ├── webrtc-terminology.md
+│   └── ice-explanation.md
+└── compose.yml                  # Docker Compose configuration
 ```
 
 ## Development Workflow
 
-### P2P Communication Demo
+### Data Channel P2P Communication Demo
 
 1. Start signal server: `task signal`
 2. In separate terminals:
-   - Terminal 1: `task p2p-offer`
-   - Terminal 2: `task p2p-answer`
+   - Terminal 1: `task datachannel`
+   - Terminal 2: `task datachannel -role=answer`
 3. Enter peer ID when prompted to establish connection
 4. Use interactive commands:
    - `offer <peer_id>` - Create WebRTC offer
@@ -137,6 +150,28 @@ The project follows a domain-driven design with clean interfaces and modular pac
    - `send <label> <message>` - Send message
    - `list` - List active channels
    - `quit` - Exit
+
+### Audio/Video Streaming Demos
+
+**Audio (Opus codec)**:
+```bash
+# Terminal 1 (offer side)
+task audio-offer
+
+# Terminal 2 (answer side)
+task audio-answer
+```
+
+**Video (VP8 codec)**:
+```bash
+# Terminal 1 (offer side)
+task video-offer
+
+# Terminal 2 (answer side)
+task video-answer
+```
+
+Note: Generate sample audio first with `task generate-audio` before running audio demos.
 
 ## Development Notes
 
